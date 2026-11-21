@@ -41,6 +41,18 @@ final class UmgebungTests: XCTestCase {
     }
 }
 
+final class ReiterTests: XCTestCase {
+    /// Drucken und Einstellungen liegen unter „Mehr“ — die Startargumente führen trotzdem direkt hin.
+    func testStartargumente() {
+        XCTAssertEqual(Reiter.ausStart("ki")?.0, .ki)
+        XCTAssertEqual(Reiter.ausStart("druck")?.0, .mehr)
+        XCTAssertEqual(Reiter.ausStart("druck")?.1, [.drucken])
+        XCTAssertEqual(Reiter.ausStart("einstellungen")?.1, [.einstellungen])
+        XCTAssertEqual(Reiter.ausStart("asset")?.1, [])
+        XCTAssertNil(Reiter.ausStart("unbekannt"))
+    }
+}
+
 final class ScanAuswertungTests: XCTestCase {
     func testEtikettAusKai() {
         XCTAssertEqual(ScanAuswertung.erkennen("https://kai-bsb.de/test/#am_assets?asset=2760"), .kaiGeraet(id: 2760, umgebung: .test))

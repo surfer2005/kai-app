@@ -1,8 +1,14 @@
 import SwiftUI
+import AVFoundation
 
 @main
 struct KAIBSBApp: App {
     @StateObject private var app = AppZustand()
+
+    init() {
+        // Vorlesen im KI-Chat auch bei stumm geschaltetem iPhone hörbar, ohne laufende Musik anderer Apps abzubrechen.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.mixWithOthers])
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -19,7 +25,7 @@ struct KAIBSBApp: App {
     }
 }
 
-/// Unten fünf Reiter: zwei KAI-Seiten, zwei Werkzeuge des iPhones, Einstellungen.
+/// Unten fünf Reiter: drei KAI-Seiten, Scannen, und „Mehr“ (Drucken, Einstellungen).
 struct HauptAnsicht: View {
     @EnvironmentObject private var app: AppZustand
 
@@ -31,15 +37,45 @@ struct HauptAnsicht: View {
             InformationenReiter()
                 .tabItem { Label("Informationen", systemImage: "info.circle") }
                 .tag(Reiter.informationen)
+            KIReiter()
+                .tabItem { Label("KI", systemImage: "bubble.left.and.text.bubble.right") }
+                .tag(Reiter.ki)
             ScanAnsicht()
                 .tabItem { Label("Scannen", systemImage: "qrcode.viewfinder") }
                 .tag(Reiter.scannen)
-            DruckAnsicht()
-                .tabItem { Label("Drucken", systemImage: "printer") }
-                .tag(Reiter.drucken)
-            EinstellungenAnsicht()
-                .tabItem { Label("Einstellungen", systemImage: "gearshape") }
-                .tag(Reiter.einstellungen)
+            MehrReiter()
+                .tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
+                .tag(Reiter.mehr)
+        }
+    }
+}
+
+/// „Mehr“: Etikett drucken und Einstellungen.
+struct MehrReiter: View {
+    @EnvironmentObject private var app: AppZustand
+
+    var body: some View {
+        NavigationStack(path: $app.mehrPfad) {
+            List {
+                NavigationLink(value: MehrZiel.drucken) {
+                    Label { Text("Etikett drucken") } icon: { Image(systemName: "printer").foregroundStyle(Farbe.primaer) }
+                }
+                NavigationLink(value: MehrZiel.einstellungen) {
+                    Label { Text("Einstellungen") } icon: { Image(systemName: "gearshape").foregroundStyle(Farbe.primaer) }
+                }
+            }
+            .navigationTitle("Mehr")
+            .toolbar {
+                if let u = app.umgebung {
+                    ToolbarItem(placement: .topBarTrailing) { UmgebungsKennzeichen(umgebung: u) }
+                }
+            }
+            .navigationDestination(for: MehrZiel.self) { ziel in
+                switch ziel {
+                case .drucken: DruckAnsicht()
+                case .einstellungen: EinstellungenAnsicht()
+                }
+            }
         }
     }
 }

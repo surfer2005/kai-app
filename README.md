@@ -1,7 +1,7 @@
 # KAI BSB — die App fürs iPhone (Fassung 1)
 
-App für Mitarbeiter der Bodensee-Schiffsbetriebe: **Asset Manager** und **Informationen** aus KAI, dazu **Scannen** und
-**Etiketten drucken** direkt mit dem iPhone. Konzept und Klick-Dummy: „KAI-App für Mitarbeiter“ (20.11.2026).
+App für Mitarbeiter der Bodensee-Schiffsbetriebe: **Asset Manager**, **Informationen** und **KI-Chat** aus KAI, dazu
+**Scannen** und **Etiketten drucken** direkt mit dem iPhone. Konzept und Klick-Dummy: „KAI-App für Mitarbeiter“ (20.11.2026).
 
 Quelle liegt im KAI-Repository unter `edge/kai-app/` und wird in das öffentliche GitHub-Repository `surfer2005/kai-app`
 gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgast-Info-App).
@@ -12,9 +12,13 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   **Produktion** (`kai-bsb.de`) oder **Entwicklung** (`peter.kechel.de`). Später in den Einstellungen änderbar.
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
+- Unten fünf Reiter: **Asset Manager · Informationen · KI · Scannen · Mehr** (unter „Mehr“: Etikett drucken, Einstellungen).
 - **Asset Manager** und **Informationen** (Zielanzeiger, GPS-Karte, Wetter, Telefonnummern, Schiffseinsatzplan,
   Dienstplan, Charter- und Cateringübersicht, Bereitschaftsplan, Portale): die KAI-Ansichten selbst, mit deinen Rechten.
   Telefonnummern lassen sich direkt anrufen.
+- **KI:** der KI-Chat aus KAI (eigene KI im Haus). Das **Mikrofon** für die Spracheingabe geht auch in der App (iOS fragt
+  beim ersten Mal nach), **Vorlesen** spielt die Antwort ab — auch bei stumm geschaltetem iPhone. Wer das Recht `ki_chat`
+  nicht hat, sieht in KAI den Hinweis dazu.
 - **Scannen** (Kamera, Apples Bilderkennung wie in der früheren Asset-Manager-App): QR-Etikett aus KAI
   (`…/#am_assets?asset=<Nr.>`), altes Etikett aus dem früheren Asset Manager (`bsb-betrieb.de/asset-api/app.html?asset=<alte Nr.>`,
   KAI übersetzt die Nummer) oder ein Barcode mit Gerätename/Seriennummer (z. B. „BSBPC000199“, wird im Asset Manager gesucht)
@@ -54,7 +58,7 @@ einbetten“). GitHub prüft den Druckcode gegen eine Attrappe der Schnittstelle
 8. Die App **läuft 7 Tage**, danach in Xcode einfach wieder ▶ (iPhone am Kabel).
 
 Drucker vorbereiten: **PT-P710BT** einmal in den iPhone-Einstellungen unter **Bluetooth** koppeln. **PT-P750W**: im selben
-WLAN wie das iPhone; in der App unter Einstellungen → Etikettendrucker die IP-Adresse eintragen oder „Im WLAN suchen“.
+WLAN wie das iPhone; in der App unter Mehr → Einstellungen → Etikettendrucker die IP-Adresse eintragen oder „Im WLAN suchen“.
 
 Nur im Simulator ausprobieren geht ohne Apple-ID und ohne Kabel: im Schritt 7 einen iPhone-Simulator als Ziel wählen
 (keine Kamera, kein Drucker).
@@ -67,7 +71,7 @@ Gerätenamen, Etikett-Maße je Bandbreite), Bildschirmfotos im Simulator (`ios/w
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
-`-reiter asset|info|scan|druck|einstellungen`, `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
+`-reiter asset|info|ki|scan|mehr|druck|einstellungen`, `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
 
 ## Nächste Schritte (Konzept)
 

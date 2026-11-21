@@ -100,3 +100,15 @@ struct AssetManagerReiter: View {
         }
     }
 }
+
+/// Reiter „KI“: der KI-Chat aus KAI (Mikrofon und Vorlesen gehen auch in der App). Wer das Recht nicht hat,
+/// bekommt von KAI selbst den Hinweis.
+struct KIReiter: View {
+    @EnvironmentObject private var app: AppZustand
+
+    var body: some View {
+        if let seite = app.ki {
+            KaiSeite(steuerung: seite, titel: "KI-Chat").id(ObjectIdentifier(seite))
+        }
+    }
+}

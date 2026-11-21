@@ -16,7 +16,7 @@ struct EinstellungenAnsicht: View {
     private var modell: DruckerModell { DruckerModell(rawValue: druckerWahl) ?? .ptP710BT }
 
     var body: some View {
-        NavigationStack {
+        Group {
             Form {
                 Section {
                     ForEach(Umgebung.allCases) { u in
@@ -56,7 +56,7 @@ struct EinstellungenAnsicht: View {
 
                 Section {
                     Picker("Drucker", selection: $druckerWahl) {
-                        ForEach(DruckerModell.allCases) { m in Text("\(m.name) · \(m.verbindung)").tag(m.rawValue) }
+                        ForEach(DruckerModell.allCases) { m in Text("\(m.rawValue) · \(m.verbindung)").tag(m.rawValue) }
                     }
                     if modell == .ptP710BT {
                         if gekoppelt.isEmpty {

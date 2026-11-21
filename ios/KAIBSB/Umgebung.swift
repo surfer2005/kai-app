@@ -103,9 +103,9 @@ enum Start {
     static var umgebung: Umgebung? { wert("umgebung").flatMap(Umgebung.init(rawValue:)) }
     /// Gespeicherte Wahl vergessen → Einrichtung wie beim ersten Start.
     static var zuruecksetzen: Bool { schalter("zuruecksetzen") }
-    /// Welcher Reiter beim Start offen ist: asset, info, scan, druck, einstellungen.
+    /// Welcher Reiter beim Start offen ist: asset, info, ki, scan, mehr, druck, einstellungen.
     static var reiter: String? { wert("reiter") }
-    /// Vorführung ohne Anmeldung: der Reiter „Drucken“ zeigt ein deutlich gekennzeichnetes Muster-Etikett.
+    /// Vorführung ohne Anmeldung: „Etikett drucken“ zeigt ein deutlich gekennzeichnetes Muster-Etikett.
     static var vorfuehrung: Bool { schalter("vorfuehrung") }
 }
 

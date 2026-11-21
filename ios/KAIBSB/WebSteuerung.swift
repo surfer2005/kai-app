@@ -13,7 +13,7 @@ final class WebSteuerung: NSObject, ObservableObject {
     let webView: WKWebView
     let umgebung: Umgebung
     let startAnsicht: String
-    /// Meldet, wenn in der KAI-Seite ein Gerät geöffnet wurde (id, Name) — für den Reiter „Drucken“.
+    /// Meldet, wenn in der KAI-Seite ein Gerät geöffnet wurde (id, Name) — für „Etikett drucken“.
     var geraetGeoeffnet: ((Int, String?) -> Void)?
 
     private var beobachter: [NSKeyValueObservation] = []
@@ -26,6 +26,9 @@ final class WebSteuerung: NSObject, ObservableObject {
         konfiguration.websiteDataStore = .default()
         konfiguration.applicationNameForUserAgent = "KAI-BSB-App/\(AppInfo.version)"
         konfiguration.allowsInlineMediaPlayback = true
+        // KI-Chat „Vorlesen“: KAI spielt die Antwort ab, sobald der Ton fertig ist (nach dem Tippen, aber nicht
+        // unmittelbar darin) — deshalb Wiedergabe ohne eigenen Tipp erlauben.
+        konfiguration.mediaTypesRequiringUserActionForPlayback = []
         let inhalt = WKUserContentController()
         inhalt.addUserScript(WKUserScript(source: Self.beobachterSkript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         konfiguration.userContentController = inhalt
@@ -203,6 +206,14 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
             webView.load(navigationAction.request)
         }
         return nil
+    }
+
+    /// Mikrofon (KI-Chat: Spracheingabe) und Kamera für Seiten aus KAI selbst freigeben — die Erlaubnis des iPhones
+    /// fragt iOS beim ersten Mal ab. Fremde Seiten (z. B. unter „Portale“) fragen wie im Browser selbst nach.
+    func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+                 initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType,
+                 decisionHandler: @escaping @MainActor @Sendable (WKPermissionDecision) -> Void) {
+        decisionHandler(origin.host.lowercased() == umgebung.host.lowercased() ? .grant : .prompt)
     }
 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,

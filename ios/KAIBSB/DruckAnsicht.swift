@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Reiter „Drucken“: Etikett des zuletzt geöffneten Geräts auf dem Brother-Etikettendrucker.
+/// „Mehr“ → „Etikett drucken“: Etikett des zuletzt geöffneten Geräts auf dem Brother-Etikettendrucker.
 struct DruckAnsicht: View {
     @EnvironmentObject private var app: AppZustand
     @AppStorage("drucker") private var druckerWahl = DruckerModell.ptP710BT.rawValue
@@ -17,7 +17,7 @@ struct DruckAnsicht: View {
     private var masse: EtikettMasse { EtikettMasse.berechnen(band: band, laenge: laenge) }
 
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if !DruckDienst.bausteinVorhanden {
@@ -89,7 +89,7 @@ struct DruckAnsicht: View {
 
             if let meldung { Hinweis(ton: meldung.ton, symbol: meldung.ton == .gruen ? "checkmark.circle" : "exclamationmark.triangle", text: meldung.text) }
 
-            Text("Drucker, Bandbreite und Etikettenlänge stellst du im Reiter „Einstellungen“ ein.")
+            Text("Drucker, Bandbreite und Etikettenlänge stellst du unter „Mehr → Einstellungen“ ein.")
                 .font(.footnote)
                 .foregroundStyle(Farbe.textLeise)
         } else {

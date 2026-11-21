@@ -39,6 +39,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: Zum Scannen der QR-Codes und Barcodes auf Geräte-Etiketten.
+        NSMicrophoneUsageDescription: Für die Spracheingabe im KI-Chat.
         NSBluetoothAlwaysUsageDescription: Zum Drucken von Etiketten auf dem Brother-Etikettendrucker (PT-P710BT).
         NSLocalNetworkUsageDescription: Zum Finden und Ansprechen des WLAN-Etikettendruckers (Brother PT-P750W).
         NSBonjourServices: [_pdl-datastream._tcp, _printer._tcp, _ipp._tcp]
