@@ -125,7 +125,7 @@ enum DruckDienst {
             }
             for kanal in ergebnis.channels { sammler.dazu(kanal) }
             let rest = sekunden - Date().timeIntervalSince(beginn)
-            if rest > 0 { Thread.sleep(forTimeInterval: rest) }
+            if rest > 0 { try? await Task.sleep(nanoseconds: UInt64(rest * 1_000_000_000)) }
             return sammler.liste()
         }.value
         #else
