@@ -1,0 +1,12 @@
+# Wird aus ios/project.yml erzeugt (xcodegen generate)
+ios/*.xcodeproj/
+ios/KAIBSB/Info.plist
+# Brother Print SDK — Lizenz, gehört NICHT ins öffentliche Repository
+ios/Frameworks/*.xcframework/
+# Bau-Ergebnisse
+bau/
+bildschirmfotos/
+xcodebuild.log
+DerivedData/
+.DS_Store
+xcuserdata/

@@ -1,0 +1,60 @@
+# KAI BSB fürs iPhone bauen, prüfen und im Simulator fotografieren — ohne Apple-Konto (Simulator braucht keine Signatur).
+# Das Brother-SDK liegt nicht im Repository: die App baut ohne; der Druckcode wird gegen eine Attrappe typgeprüft.
+name: iOS
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  bauen:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - name: Druckcode gegen Brother-Attrappe prüfen (ohne lizenziertes SDK)
+        run: |
+          cd ios
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -parse-as-library -sdk "$SDK" -target arm64-apple-ios17.0-simulator \
+            -module-name KAIBSB -I werkzeuge/brother-attrappe KAIBSB/*.swift
+          echo "Druckcode mit BRLMPrinterKit-Schnittstellen übersetzt."
+      - name: Projekt erzeugen (XcodeGen)
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+      - name: Simulator wählen
+        id: sim
+        run: echo "udid=$(python3 ios/werkzeuge/simulator-waehlen.py)" >> "$GITHUB_OUTPUT"
+      - name: Bauen und prüfen
+        run: |
+          set -o pipefail
+          cd ios
+          xcodebuild -project KAIBSB.xcodeproj -scheme KAIBSB -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath ../bau \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee ../xcodebuild.log | grep -E "error:|warning: .*KAIBSB/|Test Case|Executed|Brother|\*\* (TEST|BUILD)" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" ../xcodebuild.log
+      - name: Bildschirmfotos
+        run: ios/werkzeuge/bildschirmfotos.sh "${{ steps.sim.outputs.udid }}" bau/Build/Products/Debug-iphonesimulator/KAIBSB.app bildschirmfotos
+      - name: Xcode-Projekt zum Herunterladen (für den Weg über Xcode auf dem eigenen Mac)
+        run: |
+          mkdir -p KAIBSB-Xcode
+          cp -R ios/KAIBSB ios/KAIBSBTests ios/KAIBSB.xcodeproj ios/project.yml ios/Frameworks KAIBSB-Xcode/
+          cp README.md KAIBSB-Xcode/ANLEITUNG.md
+          rm -rf KAIBSB-Xcode/KAIBSB.xcodeproj/xcuserdata KAIBSB-Xcode/KAIBSB.xcodeproj/project.xcworkspace/xcuserdata
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KAIBSB-Xcode
+          path: KAIBSB-Xcode/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bildschirmfotos
+          path: |
+            bildschirmfotos/
+            xcodebuild.log
+          if-no-files-found: warn

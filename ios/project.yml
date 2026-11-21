@@ -1,0 +1,96 @@
+# KAI BSB für das iPhone — Projektbeschreibung für XcodeGen (`xcodegen generate` erzeugt daraus das Xcode-Projekt).
+# Das Xcode-Projekt selbst liegt nicht im Repository; so bleibt nur diese eine, lesbare Datei zu pflegen.
+#
+# Brother Print SDK (BRLMPrinterKit.xcframework): liegt aus Lizenzgründen NICHT im Repository. Wer es hat, kopiert es
+# nach `Frameworks/` (neben dieser Datei bzw. neben KAIBSB.xcodeproj). Dann findet der Übersetzer es über die
+# Suchpfade unten (`#if canImport(BRLMPrinterKit)` wird wahr) und der Schritt „Brother-Baustein einbetten“ legt es
+# signiert in die App. Ohne SDK baut alles wie gehabt, nur Drucken meldet „Drucker-Baustein fehlt“.
+name: KAIBSB
+options:
+  bundleIdPrefix: de.kaibsb
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: de
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Welche Umgebung beim ersten Start vorgewählt ist: test | produktion | entwicklung
+    KAI_UMGEBUNG_VORGABE: test
+    # Suchpfade für das Brother-SDK (für App UND Prüfungen; fehlt der Ordner, gibt es nur eine Warnung).
+    "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64"
+    "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64_x86_64-simulator"
+targets:
+  KAIBSB:
+    type: application
+    platform: iOS
+    sources:
+      - path: KAIBSB
+    info:
+      path: KAIBSB/Info.plist
+      properties:
+        CFBundleDisplayName: KAI BSB
+        CFBundleDevelopmentRegion: de
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        KAIUmgebungVorgabe: "$(KAI_UMGEBUNG_VORGABE)"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Zum Scannen der QR-Codes und Barcodes auf Geräte-Etiketten.
+        NSBluetoothAlwaysUsageDescription: Zum Drucken von Etiketten auf dem Brother-Etikettendrucker (PT-P710BT).
+        NSLocalNetworkUsageDescription: Zum Finden und Ansprechen des WLAN-Etikettendruckers (Brother PT-P750W).
+        NSBonjourServices: [_pdl-datastream._tcp, _printer._tcp, _ipp._tcp]
+        UISupportedExternalAccessoryProtocols: [com.brother.ptcbp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.kaibsb.kaiapp
+        PRODUCT_NAME: KAIBSB
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        # Der Einbetten-Schritt liest aus Frameworks/ und schreibt in die App — braucht dafür freien Zugriff.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postBuildScripts:
+      - name: Brother-Baustein einbetten (falls vorhanden)
+        basedOnDependencyAnalysis: false
+        showEnvVarsInLog: false
+        script: |
+          QUELLE="${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework"
+          if [ ! -d "$QUELLE" ]; then
+            echo "Brother-Baustein fehlt (Frameworks/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
+            exit 0
+          fi
+          if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then SCHEIBE="ios-arm64_x86_64-simulator"; else SCHEIBE="ios-arm64"; fi
+          FW="$QUELLE/$SCHEIBE/BRLMPrinterKit.framework"
+          if [ ! -d "$FW" ]; then echo "error: $FW fehlt — ist es das Brother-SDK v4 (xcframework)?"; exit 1; fi
+          ZIEL="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+          mkdir -p "$ZIEL"
+          rm -rf "$ZIEL/BRLMPrinterKit.framework"
+          cp -R "$FW" "$ZIEL/"
+          rm -rf "$ZIEL/BRLMPrinterKit.framework/Headers" "$ZIEL/BRLMPrinterKit.framework/Modules"
+          if [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ] && [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ]; then
+            codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none --preserve-metadata=identifier,flags "$ZIEL/BRLMPrinterKit.framework"
+          fi
+          echo "Brother-Baustein eingebettet ($SCHEIBE)."
+  KAIBSBTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [KAIBSBTests]
+    dependencies:
+      - target: KAIBSB
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  KAIBSB:
+    build:
+      targets:
+        KAIBSB: all
+        KAIBSBTests: [test]
+    test:
+      config: Debug
+      targets: [KAIBSBTests]
