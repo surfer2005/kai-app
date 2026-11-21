@@ -56,8 +56,9 @@ struct EinstellungenAnsicht: View {
 
                 Section {
                     Picker("Drucker", selection: $druckerWahl) {
-                        ForEach(DruckerModell.allCases) { m in Text("\(m.rawValue) · \(m.verbindung)").tag(m.rawValue) }
+                        ForEach(DruckerModell.allCases) { m in Text("\(m.name) · \(m.verbindung)").tag(m.rawValue) }
                     }
+                    .pickerStyle(.inline)
                     if modell == .ptP710BT {
                         if gekoppelt.isEmpty {
                             Text("Kein PT-P710BT gekoppelt. Drucker einschalten und in den iPhone-Einstellungen unter Bluetooth koppeln.")
@@ -91,6 +92,7 @@ struct EinstellungenAnsicht: View {
                     Picker("Bandbreite", selection: $band) {
                         ForEach(EtikettMasse.bandbreiten, id: \.self) { b in Text("\(b) mm").tag(b) }
                     }
+                    .pickerStyle(.segmented)
                     if !modell.passt(band: band) {
                         Text("\(modell.name) nimmt höchstens \(modell.hoechsteBandbreite) mm.").font(.footnote).foregroundStyle(Farbe.rotText)
                     }
