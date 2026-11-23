@@ -84,6 +84,7 @@ targets:
           $D"; done
           QUELLE=""
           FW=""
+          GRUENDE=""
           ALTIFS="$IFS"; IFS='
           '
           for K in $KANDIDATEN; do
@@ -91,14 +92,16 @@ targets:
             if [ -z "$FW" ] && [ -s "$K/BRLMPrinterKit.framework/BRLMPrinterKit" ] && [ -r "$K/BRLMPrinterKit.framework/BRLMPrinterKit" ]; then
               FW="$K/BRLMPrinterKit.framework"; QUELLE="$K"; echo "  gefunden: $FW"
             else
-              echo "  $K: $(ls -ld "$K/BRLMPrinterKit.framework/BRLMPrinterKit" 2>&1 | tail -1)"
+              G="$(ls -ld "$K/BRLMPrinterKit.framework/BRLMPrinterKit" 2>&1 | tail -1 | sed 's/^ls: //')"
+              echo "  $K: $G"
+              case "$K" in *Documents/Brother*|*/Frameworks/BRLMPrinterKit*) GRUENDE="$GRUENDE | $G" ;; esac
             fi
           done
           IFS="$ALTIFS"
           echo "Inhalt von ~/Documents/Brother:"; ls -la "${HOME}/Documents/Brother" 2>&1 | sed 's/^/  /' | head -15
           if [ -z "$QUELLE" ]; then
             if [ "$VERKNUEPFT" = "1" ]; then
-              echo "error: Die App braucht den Brother-Baustein, er wurde aber an keinem Ort gefunden (Orte und Gründe im Protokoll dieses Schritts). Ohne ihn stürzt die App beim Start ab. Abhilfe: BRLMPrinterKit.xcframework nach Dokumente → Brother legen (genau dieser Name) oder nach Frameworks/ neben KAIBSB.xcodeproj; dann Product → Clean Build Folder."
+              echo "error: Die App braucht den Brother-Baustein, er wurde aber an keinem Ort gefunden. Gründe:${GRUENDE} | Benutzer $(id -un), Dokumente lesbar: $(ls "$HOME/Documents" >/dev/null 2>&1 && echo ja || echo NEIN). Ohne ihn stürzt die App beim Start ab. Abhilfe: BRLMPrinterKit.xcframework nach Dokumente → Brother legen (genau dieser Name) oder nach Frameworks/ neben KAIBSB.xcodeproj; dann Product → Clean Build Folder."
               exit 1
             fi
             echo "Brother-Baustein fehlt (Frameworks/ bzw. ~/Documents/Brother/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
