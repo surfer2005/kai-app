@@ -174,5 +174,8 @@ final class EtikettTests: XCTestCase {
         XCTAssertTrue(DruckerModell.ptP710BT.passt(band: 24))
         XCTAssertFalse(DruckerModell.ptP710BT.passt(band: 36))
         XCTAssertFalse(DruckerModell.ptP750W.passt(band: 36))
+        XCTAssertTrue(DruckerModell.ptP910BT.passt(band: 36))
+        XCTAssertTrue(DruckerModell.ptP910BT.istBluetooth)
+        XCTAssertEqual(DruckerModell.ptP910BT.kurz, "P910BT")
     }
 }

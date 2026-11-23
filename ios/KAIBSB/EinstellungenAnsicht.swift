@@ -64,16 +64,16 @@ struct EinstellungenAnsicht: View {
                         ForEach(DruckerModell.allCases) { m in Text("\(m.name) · \(m.verbindung)").tag(m.rawValue) }
                     }
                     .pickerStyle(.inline)
-                    if modell == .ptP710BT && !druckerSerie.isEmpty {
+                    if modell.istBluetooth && !druckerSerie.isEmpty {
                         // Fester Drucker (nach dem ersten Druck gemerkt) — die App druckt nur auf ihn
                         let verbunden = gekoppelt.contains { $0.serie == druckerSerie }
-                        Label(druckerName.isEmpty ? "PT-P710BT (\(druckerSerie))" : druckerName, systemImage: "printer.fill")
+                        Label(druckerName.isEmpty ? "\(modell.rawValue) (\(druckerSerie))" : druckerName, systemImage: "printer.fill")
                         Text(verbunden ? "Fester Drucker · verbunden" : "Fester Drucker · nicht verbunden — einschalten, das iPhone verbindet ihn von selbst")
                             .font(.footnote).foregroundStyle(verbunden ? Farbe.gruenText : Farbe.textLeise)
                         Button("Anderen Drucker wählen") { druckerSerie = ""; druckerName = "" }
-                    } else if modell == .ptP710BT {
+                    } else if modell.istBluetooth {
                         if gekoppelt.isEmpty {
-                            Text("Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen.")
+                            Text("Kein \(modell.rawValue) verbunden. Drucker einschalten und auf „Drucker suchen“ tippen.")
                                 .font(.footnote).foregroundStyle(Farbe.textLeise)
                         } else {
                             // Mehrere verbundene Drucker: antippen wählt, mit welchem gedruckt wird

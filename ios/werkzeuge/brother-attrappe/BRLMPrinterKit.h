@@ -22,6 +22,7 @@ typedef NS_ENUM(NSInteger, BRLMPrinterModel) {
     BRLMPrinterModelPJ_673,
     BRLMPrinterModelPT_P750W,
     BRLMPrinterModelPT_P710BT,
+    BRLMPrinterModelPT_P910BT,
 };
 
 @interface BRLMChannel : NSObject

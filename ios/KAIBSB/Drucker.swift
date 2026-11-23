@@ -4,16 +4,21 @@ import ExternalAccessory
 import BRLMPrinterKit
 #endif
 
-/// Die beiden Etikettendrucker im Einsatz.
+/// Die Etikettendrucker. PT-P910BT dazu (Peter 23.11.): steht — anders als der PT-P710BT — auf Brothers Liste der vom SDK
+/// unterstützten Drucker, für die Verteilung der App (Brother-Freigabe bei Apple) der sicherere Weg.
 enum DruckerModell: String, CaseIterable, Identifiable {
     case ptP710BT = "PT-P710BT"
+    case ptP910BT = "PT-P910BT"
     case ptP750W = "PT-P750W"
 
     var id: String { rawValue }
     var name: String { "Brother \(rawValue)" }
-    var verbindung: String { self == .ptP710BT ? "Bluetooth" : "WLAN" }
-    /// Beide nehmen TZe-Bänder bis 24 mm.
-    var hoechsteBandbreite: Int { 24 }
+    var istBluetooth: Bool { self != .ptP750W }
+    var verbindung: String { istBluetooth ? "Bluetooth" : "WLAN" }
+    /// PT-P710BT und PT-P750W nehmen TZe-Bänder bis 24 mm, der PT-P910BT bis 36 mm.
+    var hoechsteBandbreite: Int { self == .ptP910BT ? 36 : 24 }
+    /// Kurzname, unter dem sich der Drucker per Bluetooth meldet (z. B. „PT-P710BT1234“ enthält „P710BT“).
+    var kurz: String { rawValue.replacingOccurrences(of: "PT-", with: "") }
     func passt(band: Int) -> Bool { band <= hoechsteBandbreite }
 }
 
@@ -34,7 +39,7 @@ enum DruckFehler: LocalizedError {
         case let .bandZuBreit(band, modell):
             "\(modell.name) nimmt höchstens \(modell.hoechsteBandbreite) mm breites Band — eingestellt sind \(band) mm."
         case .keinBluetoothDrucker:
-            "Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen — iOS zeigt dann die Brother-Drucker in der Nähe."
+            "Kein Bluetooth-Drucker verbunden. Drucker einschalten und auf „Drucker suchen“ tippen — iOS zeigt dann die Brother-Drucker in der Nähe."
         case let .festerDruckerAus(name):
             "Der feste Drucker \(name) ist nicht verbunden. Bitte einschalten — das iPhone verbindet ihn dann von selbst. "
                 + "Einen anderen Drucker wählst du unter „Mehr → Einstellungen“."
@@ -103,7 +108,7 @@ enum DruckDienst {
     /// Der PT-P710BT steht nicht in Brothers Modellliste, deshalb findet die Bluetooth-Suche des SDK ihn nicht.
     /// Stattdessen: das von iOS gekoppelte Zubehör direkt nehmen (Weg aus Peters Test-Projekt „MyTestApp“).
     private static func istBrotherPT(_ zubehoer: EAAccessory) -> Bool {
-        zubehoer.name.contains("P710BT") || zubehoer.protocolStrings.contains("com.brother.ptcbp")
+        zubehoer.name.contains("P710BT") || zubehoer.name.contains("P910BT") || zubehoer.protocolStrings.contains("com.brother.ptcbp")
             || zubehoer.protocolStrings.contains("com.brother.ptcbep")
     }
 
@@ -122,17 +127,20 @@ enum DruckDienst {
             let kanal: BRLMChannel
             var benutzt: BluetoothDrucker?
             switch modell {
-            case .ptP710BT:
+            case .ptP710BT, .ptP910BT:
                 // Fester Drucker (Seriennummer aus den Einstellungen) — nur der; ohne festen Drucker der erste verbundene
                 let verbunden = EAAccessoryManager.shared().connectedAccessories.filter(DruckDienst.istBrotherPT)
                 let zubehoer: EAAccessory
                 if !serie.isEmpty {
                     guard let z = verbunden.first(where: { $0.serialNumber == serie }) else {
-                        throw DruckFehler.festerDruckerAus(festerName.isEmpty ? "PT-P710BT (\(serie))" : festerName)
+                        throw DruckFehler.festerDruckerAus(festerName.isEmpty ? "\(modell.rawValue) (\(serie))" : festerName)
                     }
                     zubehoer = z
                 } else {
-                    guard let z = verbunden.first else { throw DruckFehler.keinBluetoothDrucker }
+                    // ohne festen Drucker: zuerst einer des gewählten Modells, sonst der erste Brother-Drucker
+                    guard let z = verbunden.first(where: { $0.name.contains(modell.kurz) }) ?? verbunden.first else {
+                        throw DruckFehler.keinBluetoothDrucker
+                    }
                     zubehoer = z
                 }
                 benutzt = BluetoothDrucker(name: zubehoer.name, serie: zubehoer.serialNumber)
@@ -235,6 +243,7 @@ extension DruckerModell {
     var brlmModell: BRLMPrinterModel {
         switch self {
         case .ptP710BT: .PT_P710BT
+        case .ptP910BT: .PT_P910BT
         case .ptP750W: .PT_P750W
         }
     }
