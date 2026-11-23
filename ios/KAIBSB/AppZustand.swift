@@ -1,16 +1,16 @@
 import SwiftUI
 
-/// Die Reiter der unteren Leiste. „Drucken“ und „Einstellungen“ liegen unter „Mehr“ (iOS zeigt höchstens fünf).
+/// Die Reiter der unteren Leiste. Benachrichtigungen, Konto, „Drucken“ und „Einstellungen“ liegen unter „Mehr“ (iOS zeigt höchstens fünf).
 enum Reiter: Hashable {
     case assetManager, informationen, ki, scannen, mehr
 }
 
 enum MehrZiel: Hashable {
-    case drucken, einstellungen
+    case benachrichtigungen, konto, drucken, einstellungen
 }
 
 extension Reiter {
-    /// Startargument `-reiter asset|info|ki|scan|druck|einstellungen|mehr` → Reiter und ggf. Seite unter „Mehr“.
+    /// Startargument `-reiter asset|info|ki|scan|benachrichtigungen|konto|druck|einstellungen|mehr` → Reiter und ggf. Seite unter „Mehr“.
     static func ausStart(_ text: String) -> (Reiter, [MehrZiel])? {
         switch text {
         case "asset": (.assetManager, [])
@@ -18,6 +18,8 @@ extension Reiter {
         case "ki": (.ki, [])
         case "scan": (.scannen, [])
         case "mehr": (.mehr, [])
+        case "benachrichtigungen": (.mehr, [.benachrichtigungen])
+        case "konto": (.mehr, [.konto])
         case "druck": (.mehr, [.drucken])
         case "einstellungen": (.mehr, [.einstellungen])
         default: nil
@@ -43,6 +45,9 @@ final class AppZustand: ObservableObject {
     @Published private(set) var assetManager: WebSteuerung?
     @Published private(set) var informationen: WebSteuerung?
     @Published private(set) var ki: WebSteuerung?
+    /// KAI-Seiten unter „Mehr“ (Benachrichtigungen, Mein Konto): KAI blendet in der App seine Kopfleiste mit Glocke und Konto aus
+    /// (Peter 2026-11-23), deshalb stehen beide hier. Eine Seite, je nach Punkt auf die passende KAI-Ansicht gestellt.
+    @Published private(set) var mehrSeite: WebSteuerung?
 
     private let speicher = UserDefaults.standard
     private static let schluessel = "kaiUmgebung"
@@ -64,6 +69,7 @@ final class AppZustand: ObservableObject {
         let am = WebSteuerung(umgebung: neu, startAnsicht: "am_assets_neu")
         let info = WebSteuerung(umgebung: neu, startAnsicht: "infocenter")
         let kiChat = WebSteuerung(umgebung: neu, startAnsicht: "ki_chat")
+        mehrSeite = WebSteuerung(umgebung: neu, startAnsicht: "profil")
         for seite in [am, info, kiChat] {
             seite.geraetGeoeffnet = { [weak self] id, name in self?.offenesGeraet = OffenesGeraet(id: id, name: name) }
         }
@@ -88,7 +94,7 @@ final class AppZustand: ObservableObject {
 
     /// Token der KAI-Anmeldung (aus einer der KAI-Seiten — alle teilen sich den Speicher).
     func token() async -> String? {
-        for seite in [assetManager, informationen, ki] {
+        for seite in [assetManager, informationen, ki, mehrSeite] {
             if let t = await seite?.token() { return t }
         }
         return nil
@@ -103,6 +109,7 @@ final class AppZustand: ObservableObject {
         await assetManager?.abmelden()
         informationen?.zurStartansicht()
         ki?.zurStartansicht()
+        mehrSeite?.zurStartansicht()
         if offenesGeraet?.vorfuehrung != true { offenesGeraet = nil }
     }
 }

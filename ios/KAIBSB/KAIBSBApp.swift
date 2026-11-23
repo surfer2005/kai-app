@@ -50,13 +50,23 @@ struct HauptAnsicht: View {
     }
 }
 
-/// „Mehr“: Etikett drucken und Einstellungen.
+/// „Mehr“: Benachrichtigungen und Konto (aus KAI), Etikett drucken, Einstellungen.
 struct MehrReiter: View {
     @EnvironmentObject private var app: AppZustand
 
     var body: some View {
         NavigationStack(path: $app.mehrPfad) {
             List {
+                Section {
+                    NavigationLink(value: MehrZiel.benachrichtigungen) {
+                        Label { Text("Benachrichtigungen") } icon: { Image(systemName: "bell").foregroundStyle(Farbe.primaer) }
+                    }
+                    NavigationLink(value: MehrZiel.konto) {
+                        Label { Text("Mein Konto") } icon: { Image(systemName: "person.crop.circle").foregroundStyle(Farbe.primaer) }
+                    }
+                } footer: {
+                    Text("Aus KAI — mit deiner Anmeldung.")
+                }
                 NavigationLink(value: MehrZiel.drucken) {
                     Label { Text("Etikett drucken") } icon: { Image(systemName: "printer").foregroundStyle(Farbe.primaer) }
                 }
@@ -72,6 +82,8 @@ struct MehrReiter: View {
             }
             .navigationDestination(for: MehrZiel.self) { ziel in
                 switch ziel {
+                case .benachrichtigungen: MehrKaiSeite(titel: "Benachrichtigungen", ansicht: "benachrichtigungen")
+                case .konto: MehrKaiSeite(titel: "Mein Konto", ansicht: "profil")
                 case .drucken: DruckAnsicht()
                 case .einstellungen: EinstellungenAnsicht()
                 }
@@ -141,5 +153,32 @@ struct EinrichtungAnsicht: View {
             .padding(20)
         }
         .background(Farbe.hintergrund.ignoresSafeArea())
+    }
+}
+
+/// Eine KAI-Ansicht unter „Mehr“ (Benachrichtigungen = #benachrichtigungen, Mein Konto = #profil).
+struct MehrKaiSeite: View {
+    @EnvironmentObject private var app: AppZustand
+    let titel: String
+    let ansicht: String
+
+    var body: some View {
+        Group {
+            if let seite = app.mehrSeite {
+                KaiSeite(steuerung: seite, titel: titel, mitKopf: false)
+                    .onAppear { seite.zeigen(ansicht) }
+            }
+        }
+        .navigationTitle(titel)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let seite = app.mehrSeite {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { seite.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
+                        .accessibilityLabel("Neu laden")
+                }
+            }
+        }
+        .background(Farbe.hintergrund)
     }
 }

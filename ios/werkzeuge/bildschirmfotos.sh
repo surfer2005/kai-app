@@ -25,6 +25,7 @@ foto 03-informationen -umgebung test -reiter info
 WARTE=15 foto 04-ki-chat-kai-test -umgebung test -reiter ki
 foto 05-scannen -umgebung test -reiter scan
 foto 06-mehr -umgebung test -reiter mehr
+WARTE=15 foto 07-benachrichtigungen-kai-test -umgebung test -reiter benachrichtigungen
 foto 07-etikett-muster -umgebung test -reiter druck -vorfuehrung
 WARTE=6 foto 08-einstellungen -umgebung test -reiter einstellungen
 xcrun simctl ui "$UDID" appearance dark

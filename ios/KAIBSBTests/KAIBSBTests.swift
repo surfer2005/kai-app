@@ -48,6 +48,8 @@ final class ReiterTests: XCTestCase {
         XCTAssertEqual(Reiter.ausStart("druck")?.0, .mehr)
         XCTAssertEqual(Reiter.ausStart("druck")?.1, [.drucken])
         XCTAssertEqual(Reiter.ausStart("einstellungen")?.1, [.einstellungen])
+        XCTAssertEqual(Reiter.ausStart("benachrichtigungen")?.1, [.benachrichtigungen])
+        XCTAssertEqual(Reiter.ausStart("konto")?.1, [.konto])
         XCTAssertEqual(Reiter.ausStart("asset")?.1, [])
         XCTAssertNil(Reiter.ausStart("unbekannt"))
     }

@@ -12,7 +12,9 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   **Produktion** (`kai-bsb.de`) oder **Entwicklung** (`peter.kechel.de`). Später in den Einstellungen änderbar.
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
-- Unten fünf Reiter: **Asset Manager · Informationen · KI · Scannen · Mehr** (unter „Mehr“: Etikett drucken, Einstellungen).
+- Unten fünf Reiter: **Asset Manager · Informationen · KI · Scannen · Mehr** (unter „Mehr“: Benachrichtigungen und Mein Konto
+  aus KAI, Etikett drucken, Einstellungen). In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die
+  Seitenleiste aus — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Asset Manager** und **Informationen** (Zielanzeiger, GPS-Karte, Wetter, Telefonnummern, Schiffseinsatzplan,
   Dienstplan, Charter- und Cateringübersicht, Bereitschaftsplan, Portale): die KAI-Ansichten selbst, mit deinen Rechten.
   Telefonnummern lassen sich direkt anrufen.
