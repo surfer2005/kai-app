@@ -63,36 +63,54 @@ targets:
         showEnvVarsInLog: false
         script: |
           set -e
-          QUELLE="${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework"
-          [ -d "$QUELLE" ] || QUELLE="${HOME}/Documents/Brother/BRLMPrinterKit.xcframework"
-          if [ ! -d "$QUELLE" ]; then
+          # 2026-11-23 (Peter am iPhone): „Library not loaded: @rpath/BRLMPrinterKit.framework“ — der Übersetzer hatte den
+          # Baustein gefunden und die App damit verknüpft, dieser Schritt hat ihn aber NICHT in die App gelegt (still „fehlt“).
+          # Deshalb: zuerst nachsehen, ob die App ihn braucht. Braucht sie ihn und er lässt sich nicht einbetten → anhalten.
+          APP="${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}"
+          VERKNUEPFT=0
+          for B in "$APP/${EXECUTABLE_NAME}" "$APP/${EXECUTABLE_NAME}.debug.dylib"; do
+            if [ -f "$B" ] && xcrun otool -L "$B" 2>/dev/null | grep -q "BRLMPrinterKit.framework"; then
+              VERKNUEPFT=1; echo "App ist mit dem Brother-Baustein verknüpft: $B"
+            fi
+          done
+          if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then echo "Simulator: ohne Brother-Baustein (Drucken nur auf dem iPhone)."; exit 0; fi
+          echo "Suche Brother-Baustein (HOME=$HOME, Skript-Sandbox=${ENABLE_USER_SCRIPT_SANDBOXING:-?}):"
+          QUELLE=""
+          for K in "${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework" "${HOME}/Documents/Brother/BRLMPrinterKit.xcframework"; do
+            if ls -ld "$K/ios-arm64/BRLMPrinterKit.framework/BRLMPrinterKit" >/dev/null 2>&1 && [ -z "$QUELLE" ]; then
+              QUELLE="$K"; echo "  gefunden: $K"
+            else
+              echo "  $K: $(ls -ld "$K/ios-arm64/BRLMPrinterKit.framework/BRLMPrinterKit" 2>&1 | tail -1)"
+            fi
+          done
+          if [ -z "$QUELLE" ]; then
+            if [ "$VERKNUEPFT" = "1" ]; then
+              echo "error: Die App braucht den Brother-Baustein, dieser Schritt kann ihn aber nicht lesen (Gründe oben). Ohne ihn stürzt die App beim Start ab. Abhilfe: Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Xcode → „Ordner Dokumente“ an — oder BRLMPrinterKit.xcframework nach Frameworks/ neben KAIBSB.xcodeproj kopieren."
+              exit 1
+            fi
             echo "Brother-Baustein fehlt (Frameworks/ bzw. ~/Documents/Brother/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
             exit 0
           fi
-          echo "Brother-Baustein aus $QUELLE"
-          if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then echo "Simulator: ohne Brother-Baustein (Drucken nur auf dem iPhone)."; exit 0; fi
           SCHEIBE="ios-arm64"
           FW="$QUELLE/$SCHEIBE/BRLMPrinterKit.framework"
-          if [ ! -d "$FW" ]; then echo "error: $FW fehlt — ist es das Brother-SDK v4 (xcframework)?"; exit 1; fi
-          # Gefunden heißt nicht lesbar: macOS kann Xcode den Ordner „Dokumente“ verwehren — dann lieber hier anhalten als eine App
-          # bauen, die beim Start abstürzt (2026-11-23: dyld __abort_with_payload, Baustein fehlte in der App)
-          if [ ! -r "$FW/BRLMPrinterKit" ] || [ ! -r "$FW/Info.plist" ]; then
-            echo "error: Brother-Baustein gefunden, aber nicht lesbar ($FW). macOS: Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Xcode → „Ordner Dokumente“ erlauben — oder den Baustein nach Frameworks/ im Projekt kopieren."
-            exit 1
-          fi
           ZIEL="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
           mkdir -p "$ZIEL"
           rm -rf "$ZIEL/BRLMPrinterKit.framework"
-          cp -R "$FW" "$ZIEL/"
-          if [ ! -f "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" ]; then echo "error: Brother-Baustein ließ sich nicht in die App kopieren ($ZIEL)."; exit 1; fi
+          if ! ditto "$FW" "$ZIEL/BRLMPrinterKit.framework"; then
+            echo "error: Brother-Baustein ließ sich nicht in die App kopieren ($FW → $ZIEL). Abhilfe: Xcode Zugriff auf „Ordner Dokumente“ geben oder den Baustein nach Frameworks/ im Projekt kopieren."
+            exit 1
+          fi
+          if [ ! -s "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" ]; then echo "error: Brother-Baustein in der App ist leer oder fehlt ($ZIEL) — liegt er evtl. nur in iCloud und ist nicht geladen?"; exit 1; fi
           rm -rf "$ZIEL/BRLMPrinterKit.framework/Headers" "$ZIEL/BRLMPrinterKit.framework/Modules"
           if [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ] && [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ]; then
             codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none --preserve-metadata=identifier,flags "$ZIEL/BRLMPrinterKit.framework"
+          else
+            echo "warning: Brother-Baustein NICHT neu signiert (keine Signatur-Identität) — auf dem iPhone kann das Laden scheitern."
           fi
           echo "Brother-Baustein eingebettet ($SCHEIBE) aus $QUELLE:"
           ls -la "$ZIEL/BRLMPrinterKit.framework"
           codesign -dv "$ZIEL/BRLMPrinterKit.framework" 2>&1 | grep -E "Identifier|TeamIdentifier|Authority" || true
-          otool -L "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" 2>/dev/null | head -12 || true
+          xcrun otool -L "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" 2>/dev/null | head -12 || true
           /usr/libexec/PlistBuddy -c "Print :MinimumOSVersion" "$ZIEL/BRLMPrinterKit.framework/Info.plist" 2>/dev/null | sed 's/^/MinimumOSVersion /' || true
   KAIBSBTests:
     type: bundle.unit-test
