@@ -1,4 +1,5 @@
 import SwiftUI
+import ExternalAccessory
 
 struct EinstellungenAnsicht: View {
     @EnvironmentObject private var app: AppZustand
@@ -6,9 +7,12 @@ struct EinstellungenAnsicht: View {
     @AppStorage("band") private var band = 24
     @AppStorage("laenge") private var laenge = 40
     @AppStorage("druckerIP") private var druckerIP = ""
+    @AppStorage("druckerSerie") private var druckerSerie = ""
 
     @State private var angemeldet: Bool?
-    @State private var gekoppelt: [String] = []
+    @State private var gekoppelt: [BluetoothDrucker] = []
+    @State private var btSucht = false
+    @State private var btMeldung: String?
     @State private var sucht = false
     @State private var gefunden: [GefundenerDrucker]?
     @State private var wechselZiel: Umgebung?
@@ -61,12 +65,30 @@ struct EinstellungenAnsicht: View {
                     .pickerStyle(.inline)
                     if modell == .ptP710BT {
                         if gekoppelt.isEmpty {
-                            Text("Kein PT-P710BT gekoppelt. Drucker einschalten und in den iPhone-Einstellungen unter Bluetooth koppeln.")
+                            Text("Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen.")
                                 .font(.footnote).foregroundStyle(Farbe.textLeise)
                         } else {
-                            ForEach(gekoppelt, id: \.self) { d in Label(d, systemImage: "checkmark.circle").foregroundStyle(Farbe.gruenText) }
+                            // Mehrere verbundene Drucker: antippen wählt, mit welchem gedruckt wird
+                            ForEach(gekoppelt) { d in
+                                Button { druckerSerie = d.serie } label: {
+                                    HStack {
+                                        Label("\(d.name) (\(d.serie))", systemImage: "printer")
+                                        Spacer()
+                                        if d.serie == druckerSerie || (gekoppelt.count == 1 && druckerSerie.isEmpty) { Image(systemName: "checkmark") }
+                                    }
+                                }
+                            }
                         }
-                        Button("Gekoppelte Drucker neu prüfen") { gekoppelt = DruckDienst.gekoppelteDrucker() }
+                        Button {
+                            Task {
+                                btSucht = true; btMeldung = nil
+                                btMeldung = await DruckDienst.druckerSuchen()
+                                gekoppelt = DruckDienst.gekoppelteDrucker()
+                                btSucht = false
+                            }
+                        } label: { Label(btSucht ? "Sucht …" : "Drucker suchen (Bluetooth)", systemImage: "dot.radiowaves.left.and.right") }
+                        .disabled(btSucht)
+                        if let btMeldung { Text(btMeldung).font(.footnote).foregroundStyle(Farbe.rotText) }
                     } else {
                         TextField("IP-Adresse des PT-P750W", text: $druckerIP)
                             .keyboardType(.numbersAndPunctuation)
@@ -124,7 +146,11 @@ struct EinstellungenAnsicht: View {
                 Text("Die App lädt danach KAI \(ziel.name) (\(ziel.adresse)).")
             }
         }
+        // Drucker an/aus: Liste sofort nachziehen
+        .onReceive(NotificationCenter.default.publisher(for: .EAAccessoryDidConnect)) { _ in gekoppelt = DruckDienst.gekoppelteDrucker() }
+        .onReceive(NotificationCenter.default.publisher(for: .EAAccessoryDidDisconnect)) { _ in gekoppelt = DruckDienst.gekoppelteDrucker() }
         .task {
+            EAAccessoryManager.shared().registerForLocalNotifications()
             gekoppelt = DruckDienst.gekoppelteDrucker()
             await pruefen()
         }

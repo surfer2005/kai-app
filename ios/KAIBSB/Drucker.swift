@@ -33,7 +33,7 @@ enum DruckFehler: LocalizedError {
         case let .bandZuBreit(band, modell):
             "\(modell.name) nimmt höchstens \(modell.hoechsteBandbreite) mm breites Band — eingestellt sind \(band) mm."
         case .keinBluetoothDrucker:
-            "Kein PT-P710BT gefunden. Drucker einschalten und einmal in den iPhone-Einstellungen unter Bluetooth koppeln."
+            "Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen — iOS zeigt dann die Brother-Drucker in der Nähe."
         case .keineAdresse:
             "Für den PT-P750W fehlt die IP-Adresse. Bitte in den Einstellungen eintragen oder im WLAN suchen."
         case let .verbindung(text):
@@ -42,6 +42,13 @@ enum DruckFehler: LocalizedError {
             "Druck fehlgeschlagen: \(text)"
         }
     }
+}
+
+/// Ein über Bluetooth verbundener Brother-Drucker (PT-P710BT). Die Seriennummer unterscheidet mehrere gleiche Drucker.
+struct BluetoothDrucker: Identifiable, Equatable {
+    let name: String
+    let serie: String
+    var id: String { serie }
 }
 
 /// Ein im WLAN gefundener Brother-Drucker.
@@ -63,20 +70,40 @@ enum DruckDienst {
         #endif
     }
 
-    /// Mit dem iPhone gekoppelte Brother-Drucker (Bluetooth). Geht auch ohne SDK — iOS kennt das Zubehör selbst.
-    static func gekoppelteDrucker() -> [String] {
+    /// Verbundene Brother-Drucker (Bluetooth), alle — bei zwei eingeschalteten Druckern stehen beide hier.
+    /// Geht auch ohne SDK — iOS kennt das Zubehör selbst.
+    static func gekoppelteDrucker() -> [BluetoothDrucker] {
         EAAccessoryManager.shared().connectedAccessories
             .filter(istBrotherPT)
-            .map { "\($0.name) (\($0.serialNumber))" }
+            .map { BluetoothDrucker(name: $0.name, serie: $0.serialNumber) }
+    }
+
+    /// Brother-Drucker in der Nähe suchen und koppeln — mit der Auswahl von iOS, aus der App heraus
+    /// (Peter 23.11.: „Bluetooth auswählen klappt nicht“ — über die iPhone-Einstellungen ließ sich der Drucker nicht koppeln;
+    /// so machen es auch Brothers eigene Apps). Rückgabe: Fehlertext oder nil, wenn ein Drucker verbunden ist.
+    @MainActor static func druckerSuchen() async -> String? {
+        await withCheckedContinuation { (fortsetzung: CheckedContinuation<String?, Never>) in
+            EAAccessoryManager.shared().showBluetoothAccessoryPicker(withNameFilter: nil) { fehler in
+                guard let fehler else { fortsetzung.resume(returning: nil); return }
+                let code = (fehler as NSError).code
+                switch EABluetoothAccessoryPickerError.Code(rawValue: code) {
+                case .alreadyConnected: fortsetzung.resume(returning: nil)
+                case .resultNotFound: fortsetzung.resume(returning: "Kein Brother-Drucker in der Nähe gefunden. Ist er eingeschaltet und die Bluetooth-Lampe an?")
+                case .resultCancelled: fortsetzung.resume(returning: "Suche abgebrochen.")
+                default: fortsetzung.resume(returning: "Koppeln fehlgeschlagen: \(fehler.localizedDescription)")
+                }
+            }
+        }
     }
 
     /// Der PT-P710BT steht nicht in Brothers Modellliste, deshalb findet die Bluetooth-Suche des SDK ihn nicht.
     /// Stattdessen: das von iOS gekoppelte Zubehör direkt nehmen (Weg aus Peters Test-Projekt „MyTestApp“).
     private static func istBrotherPT(_ zubehoer: EAAccessory) -> Bool {
         zubehoer.name.contains("P710BT") || zubehoer.protocolStrings.contains("com.brother.ptcbp")
+            || zubehoer.protocolStrings.contains("com.brother.ptcbep")
     }
 
-    static func drucken(_ bild: UIImage, modell: DruckerModell, band: Int, ip: String) async throws {
+    static func drucken(_ bild: UIImage, modell: DruckerModell, band: Int, ip: String, serie: String = "") async throws {
         guard modell.passt(band: band) else { throw DruckFehler.bandZuBreit(band, modell) }
         #if canImport(BRLMPrinterKit)
         guard let cg = bild.cgImage else { throw DruckFehler.druck("Etikett-Bild ist leer.") }
@@ -87,7 +114,9 @@ enum DruckDienst {
             let kanal: BRLMChannel
             switch modell {
             case .ptP710BT:
-                guard let zubehoer = EAAccessoryManager.shared().connectedAccessories.first(where: DruckDienst.istBrotherPT) else {
+                // Gewählter Drucker (Seriennummer aus den Einstellungen), sonst der erste verbundene
+                let verbunden = EAAccessoryManager.shared().connectedAccessories.filter(DruckDienst.istBrotherPT)
+                guard let zubehoer = verbunden.first(where: { $0.serialNumber == serie }) ?? verbunden.first else {
                     throw DruckFehler.keinBluetoothDrucker
                 }
                 kanal = BRLMChannel(bluetoothSerialNumber: zubehoer.serialNumber)

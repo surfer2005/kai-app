@@ -45,7 +45,10 @@ targets:
         NSBluetoothAlwaysUsageDescription: Zum Drucken von Etiketten auf dem Brother-Etikettendrucker (PT-P710BT).
         NSLocalNetworkUsageDescription: Zum Finden und Ansprechen des WLAN-Etikettendruckers (Brother PT-P750W).
         NSBonjourServices: [_pdl-datastream._tcp, _printer._tcp, _ipp._tcp]
-        UISupportedExternalAccessoryProtocols: [com.brother.ptcbp]
+        # Beide Brother-Protokolle wie in Peters funktionierendem Projekt „MyTestApp“ (23.11.: mit nur ptcbp sah die App den
+        # gekoppelten PT-P710BT nicht — iOS zeigt einer App nur Zubehör, dessen Protokoll sie hier anmeldet)
+        UISupportedExternalAccessoryProtocols: [com.brother.ptcbp, com.brother.ptcbep]
+        NSBluetoothPeripheralUsageDescription: Für die Verbindung mit dem Brother-Etikettendrucker.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.kaibsb.kaiapp

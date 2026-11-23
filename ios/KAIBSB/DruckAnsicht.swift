@@ -7,6 +7,8 @@ struct DruckAnsicht: View {
     @AppStorage("band") private var band = 24
     @AppStorage("laenge") private var laenge = 40
     @AppStorage("druckerIP") private var druckerIP = ""
+    @AppStorage("druckerSerie") private var druckerSerie = ""
+    @State private var keinDrucker = false
 
     @State private var geraet: GeraetKurz?
     @State private var laedt = false
@@ -88,6 +90,16 @@ struct DruckAnsicht: View {
             }
 
             if let meldung { Hinweis(ton: meldung.ton, symbol: meldung.ton == .gruen ? "checkmark.circle" : "exclamationmark.triangle", text: meldung.text) }
+            if keinDrucker {
+                // Drucker direkt hier koppeln (Auswahl von iOS) und gleich drucken
+                Button {
+                    Task {
+                        if let fehler = await DruckDienst.druckerSuchen() { meldung = (fehler, .rot) }
+                        else { drucken(bild) }
+                    }
+                } label: { Label("Drucker suchen (Bluetooth)", systemImage: "dot.radiowaves.left.and.right") }
+                .buttonStyle(.bordered)
+            }
 
             Text("Drucker, Bandbreite und Etikettenlänge stellst du unter „Mehr → Einstellungen“ ein.")
                 .font(.footnote)
@@ -123,13 +135,15 @@ struct DruckAnsicht: View {
     private func drucken(_ bild: UIImage) {
         druckt = true
         meldung = nil
-        let modell = modell, band = band, ip = druckerIP
+        keinDrucker = false
+        let modell = modell, band = band, ip = druckerIP, serie = druckerSerie
         Task {
             do {
-                try await DruckDienst.drucken(bild, modell: modell, band: band, ip: ip)
+                try await DruckDienst.drucken(bild, modell: modell, band: band, ip: ip, serie: serie)
                 meldung = ("Etikett an \(modell.name) gesendet.", .gruen)
             } catch {
                 meldung = (error.localizedDescription, .rot)
+                if case DruckFehler.keinBluetoothDrucker = error { keinDrucker = true }
             }
             druckt = false
         }
