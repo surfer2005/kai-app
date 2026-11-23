@@ -80,6 +80,13 @@ final class WebSteuerung: NSObject, ObservableObject {
         webView.load(URLRequest(url: umgebung.ansicht(startAnsicht)))
     }
 
+    /// Steht die Seite (fertig geladen) auf einer anderen KAI-Ansicht, zurück zur Startansicht — für den Reiter „Start“,
+    /// der keine eigene Kopfleiste mit Zurück hat.
+    func startansichtZeigen() {
+        guard geladen, !webView.isLoading, umgebung.enthaelt(webView.url) else { return }
+        if (webView.url?.fragment ?? "").split(separator: "?").first.map(String.init) != startAnsicht { zeigen(startAnsicht) }
+    }
+
     func neuLaden() {
         fehler = nil
         if webView.url == nil { zurStartansicht() } else { webView.reload() }

@@ -58,6 +58,7 @@ struct StartReiter: View {
     var body: some View {
         if let seite = app.anmeldung {
             KaiSeite(steuerung: seite, titel: "Start", mitKopf: false).id(ObjectIdentifier(seite))
+                .onAppear { seite.startansichtZeigen() }
         }
     }
 }
