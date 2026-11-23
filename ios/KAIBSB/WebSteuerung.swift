@@ -34,6 +34,9 @@ final class WebSteuerung: NSObject, ObservableObject {
 
     private var beobachter: [NSKeyValueObservation] = []
     private var geladen = false
+    /// Die Seite war mindestens einmal fertig geladen (didFinish). Vorher darf kein Skript laufen: ein `location.hash` im noch
+    /// leeren Dokument bricht das Laden ab (Bildschirmfoto 23.11.: Reiter „Start“ blieb leer).
+    private var einmalFertig = false
 
     init(umgebung: Umgebung, startAnsicht: String) {
         self.umgebung = umgebung
@@ -83,7 +86,7 @@ final class WebSteuerung: NSObject, ObservableObject {
     /// Steht die Seite (fertig geladen) auf einer anderen KAI-Ansicht, zurück zur Startansicht — für den Reiter „Start“,
     /// der keine eigene Kopfleiste mit Zurück hat.
     func startansichtZeigen() {
-        guard geladen, !webView.isLoading, umgebung.enthaelt(webView.url) else { return }
+        guard einmalFertig, !webView.isLoading, umgebung.enthaelt(webView.url) else { return }
         if (webView.url?.fragment ?? "").split(separator: "?").first.map(String.init) != startAnsicht { zeigen(startAnsicht) }
     }
 
@@ -231,6 +234,7 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        einmalFertig = true
         anmeldungGeaendert?()
     }
 
