@@ -50,6 +50,7 @@ final class ReiterTests: XCTestCase {
         XCTAssertEqual(StartZiel.aus("dienstanweisung"), .bereich(.dienstanweisung))
         XCTAssertEqual(StartZiel.aus("schiffstatus"), .bereich(.schiffstatus))
         XCTAssertEqual(StartZiel.aus("stoermelde"), .bereich(.stoermeldedienst))
+        XCTAssertEqual(StartZiel.aus("bordbuch"), .bereich(.bordbuch))
         XCTAssertEqual(StartZiel.aus("druck"), .mehr([.drucken]))
         XCTAssertEqual(StartZiel.aus("einstellungen"), .mehr([.einstellungen]))
         XCTAssertEqual(StartZiel.aus("benachrichtigungen"), .mehr([.benachrichtigungen]))
@@ -61,13 +62,19 @@ final class ReiterTests: XCTestCase {
 
     /// Die Bereiche tragen die Namen, Rechte und Ansichten aus KAI (client/src/app-modus.js, APP_BEREICHE).
     func testBereicheWieInKai() {
-        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat"])
+        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat", "bordbuch"])
         XCTAssertEqual(Bereich.stoermeldedienst.kaiAnsicht, "stoermeldedienst")
         XCTAssertEqual(Bereich.assetManager.kaiAnsicht, "am_assets_neu")
         XCTAssertNil(Bereich.scannen.kaiAnsicht)
         XCTAssertEqual(Bereich.scannen.recht, "asset_manager")
         XCTAssertNil(Bereich.informationen.recht)
         XCTAssertEqual(Bereich.assetManager.leistenName, "Assets")
+        // Bordbuch zum Lesen (Peter 2026-11-23): Recht und KAI-Ansicht „bordbuch“, nicht in der Vorgabe der Leiste
+        XCTAssertEqual(Bereich.bordbuch.recht, "bordbuch")
+        XCTAssertEqual(Bereich.bordbuch.kaiAnsicht, "bordbuch")
+        XCTAssertEqual(Bereich.bordbuch.name, "Bordbuch")
+        XCTAssertFalse(Bereich.bordbuch.inVorgabe)
+        XCTAssertEqual(Bereich.allCases.filter { !$0.inVorgabe }, [.bordbuch])
     }
 
     /// So liefert KAI /api/auth/me (Ausschnitt) — nur die Texteinträge zählen.
@@ -85,7 +92,7 @@ final class LeisteTests: XCTestCase {
     private func lesen(_ schluessel: String...) -> [String: String] {
         Dictionary(uniqueKeysWithValues: schluessel.map { ($0, "read") })
     }
-    private let alle = Dictionary(uniqueKeysWithValues: ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "schiffstatus", "ki_chat"].map { ($0, "write") })
+    private let alle = Dictionary(uniqueKeysWithValues: ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "schiffstatus", "ki_chat", "bordbuch"].map { ($0, "write") })
 
     func testHoechstensDrei() {
         XCTAssertEqual(Leiste.hoechstens, 3)
@@ -99,11 +106,26 @@ final class LeisteTests: XCTestCase {
         XCTAssertEqual(Leiste.berechnen(rechte: [:], wahl: nil).unten, [.informationen])
     }
 
-    /// Schiffsführer (Rechte wie im Dummy): Dienstanweisung, Meldungen, Informationen unten, Schiffstatus unter „Mehr“.
+    /// Schiffsführer (Rechte wie im Dummy): Dienstanweisung, Meldungen, Informationen unten, Schiffstatus und Bordbuch unter „Mehr“.
     func testVorgabeSchiffsfuehrer() {
         let l = Leiste.berechnen(rechte: lesen("dienstanweisung", "meldungen", "bordbuch", "schiffstatus"), wahl: nil)
         XCTAssertEqual(l.unten, [.dienstanweisung, .meldungen, .informationen])
-        XCTAssertEqual(l.mehr, [.schiffstatus])
+        XCTAssertEqual(l.mehr, [.schiffstatus, .bordbuch])
+    }
+
+    /// Das Bordbuch gehört nie in die Vorgabe (Peter 2026-11-23) — auch nicht, wenn unten noch Platz wäre. Über „Leiste anpassen“
+    /// lässt es sich nach unten holen; ohne Recht `bordbuch` fehlt es ganz.
+    func testBordbuchNichtInVorgabe() {
+        let nurBordbuch = Leiste.berechnen(rechte: lesen("bordbuch"), wahl: nil)
+        XCTAssertEqual(nurBordbuch.unten, [.informationen])
+        XCTAssertEqual(nurBordbuch.mehr, [.bordbuch])
+        XCTAssertEqual(Leiste.vorgabe(alle), [.dienstanweisung, .meldungen, .stoermeldedienst])
+        let geholt = Leiste.hinzufuegen(.bordbuch, zu: [.dienstanweisung, .meldungen])
+        XCTAssertEqual(geholt, [.dienstanweisung, .meldungen, .bordbuch])
+        let l = Leiste.berechnen(rechte: alle, wahl: geholt)
+        XCTAssertEqual(l.unten, [.dienstanweisung, .meldungen, .bordbuch])
+        XCTAssertFalse(l.mehr.contains(.bordbuch))
+        XCTAssertFalse(Leiste.berechnen(rechte: lesen("dienstanweisung"), wahl: [.bordbuch]).mehr.contains(.bordbuch))
     }
 
     /// Ohne Störmeldedienst steht der Asset Manager an seiner Stelle (IT: Dienstanweisung, Assets, Scannen).
@@ -117,7 +139,7 @@ final class LeisteTests: XCTestCase {
     func testStoermeldedienstStattAssetManager() {
         let l = Leiste.berechnen(rechte: alle, wahl: nil)
         XCTAssertEqual(l.unten, [.dienstanweisung, .meldungen, .stoermeldedienst])
-        XCTAssertEqual(l.mehr, [.assetManager, .scannen, .informationen, .schiffstatus, .kiChat])
+        XCTAssertEqual(l.mehr, [.assetManager, .scannen, .informationen, .schiffstatus, .kiChat, .bordbuch])
         let ohneMeldungen = Leiste.berechnen(rechte: lesen("stoermeldedienst", "asset_manager"), wahl: nil)
         XCTAssertEqual(ohneMeldungen.unten, [.stoermeldedienst, .scannen, .informationen])
         XCTAssertEqual(ohneMeldungen.mehr, [.assetManager])
@@ -127,7 +149,7 @@ final class LeisteTests: XCTestCase {
     func testGespeicherteWahl() {
         let l = Leiste.berechnen(rechte: alle, wahl: [.schiffstatus, .assetManager, .stoermeldedienst])
         XCTAssertEqual(l.unten, [.schiffstatus, .assetManager, .stoermeldedienst])
-        XCTAssertEqual(l.mehr, [.dienstanweisung, .meldungen, .scannen, .informationen, .kiChat])
+        XCTAssertEqual(l.mehr, [.dienstanweisung, .meldungen, .scannen, .informationen, .kiChat, .bordbuch])
     }
 
     /// Mehr als drei oder doppelt Gespeichertes wird gekürzt.

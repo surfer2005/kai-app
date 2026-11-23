@@ -35,6 +35,8 @@ WARTE=15 foto 10-dienstanweisung-kai-test -umgebung test -rechte dienstanweisung
 foto 11-informationen -umgebung test -rechte dienstanweisung,meldungen -reiter info
 foto 12-scannen-unter-mehr -umgebung test -rechte alle -reiter scan
 WARTE=15 foto 13-benachrichtigungen-kai-test -umgebung test -rechte alle -reiter benachrichtigungen
+# Bordbuch (nur lesen) steht unter „Mehr“ — ohne Anmeldung zeigt die KAI-Seite die Anmeldeseite
+WARTE=15 foto 18-bordbuch-unter-mehr-kai-test -umgebung test -rechte alle -reiter bordbuch
 foto 14-etikett-muster -umgebung test -rechte alle -reiter druck -vorfuehrung
 WARTE=6 foto 15-einstellungen -umgebung test -reiter einstellungen
 xcrun simctl ui "$UDID" appearance dark

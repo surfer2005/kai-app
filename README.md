@@ -13,7 +13,8 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
 - **Leiste unten** (Klick-Dummy „KAI-App“): links fest **Start**, dazwischen bis zu **drei Bereiche**, rechts fest **Mehr**.
-  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat.
+  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat ·
+  Bordbuch.
   Welche jemand sieht, kommt aus KAI: nach der Anmeldung liest die App die Rechte (`GET /api/auth/me`, Leserecht genügt;
   Informationen für alle, Scannen mit dem Recht Asset Manager). Vorgabe: die ersten drei in dieser Reihenfolge — wer den
   Störmeldedienst lesen darf, hat ihn statt des Asset Managers unten. Unter **Mehr → Leiste anpassen** wählt jede Person selbst,
@@ -24,6 +25,10 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   etwas ansteht, und die eigenen Bereiche mit Zahlen — ein Tipp wechselt in den Bereich.
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
+- **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen**: je Bordbuch ein Kasten (Schiff, Datum, Gattung, Nummer, Stand),
+  ein Tipp klappt erst die Besatzung (Rang, Person, Dienst, Arbeits- und Kontrollzeit mit Ampel), dann die Kurse (Von → Nach,
+  Soll/Ist, Personen zu/ab/aktuell, km) auf (KAI: `BordbuchLesen.vue`). Erfasst wird am iPad quer oder am PC. Das Bordbuch steht
+  NICHT in der Vorgabe der Leiste, sondern unter „Mehr“ — über „Leiste anpassen“ lässt es sich nach unten holen.
 - **Asset Manager** und **Informationen** (Zielanzeiger, GPS-Karte, Wetter, Telefonnummern, Schiffseinsatzplan,
   Dienstplan, Charter- und Cateringübersicht, Bereitschaftsplan, Portale): die KAI-Ansichten selbst, mit deinen Rechten.
   Telefonnummern lassen sich direkt anrufen.

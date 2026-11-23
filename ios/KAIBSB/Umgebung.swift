@@ -103,7 +103,7 @@ enum Start {
     static var umgebung: Umgebung? { wert("umgebung").flatMap(Umgebung.init(rawValue:)) }
     /// Gespeicherte Wahl vergessen → Einrichtung wie beim ersten Start.
     static var zuruecksetzen: Bool { schalter("zuruecksetzen") }
-    /// Welcher Reiter beim Start offen ist: dienstanweisung, meldungen, stoermelde, asset, scan, info, schiffstatus, ki
+    /// Welcher Reiter beim Start offen ist: dienstanweisung, meldungen, stoermelde, asset, scan, info, schiffstatus, ki, bordbuch
     /// (steht der Bereich nicht unten, öffnet er sich unter „Mehr“), mehr, benachrichtigungen, konto, druck, einstellungen, leiste.
     static var reiter: String? { wert("reiter") }
     /// Vorführung/Bildschirmfotos ohne Anmeldung: Rechte für die Reiter vorgeben, statt sie aus KAI zu lesen —

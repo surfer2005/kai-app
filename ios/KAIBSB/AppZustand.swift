@@ -29,6 +29,7 @@ enum StartZiel: Equatable {
         case "info": .bereich(.informationen)
         case "schiffstatus": .bereich(.schiffstatus)
         case "ki": .bereich(.kiChat)
+        case "bordbuch": .bereich(.bordbuch)
         case "start": nil
         case "mehr": .mehr([])
         case "benachrichtigungen": .mehr([.benachrichtigungen])

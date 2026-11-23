@@ -3,7 +3,8 @@ import Foundation
 /// Die Bereiche der App — jeder steht als Reiter unten in der Leiste oder unter „Mehr“.
 /// Reihenfolge wie im Klick-Dummy „KAI-App“ (BEREICHE: Dienstanweisung, Meldungen, Asset Manager, Scannen, Informationen,
 /// Schiffstatus, KI-Chat); der Störmeldedienst steht an der Stelle des Asset Managers (Peter 2026-11-23: „wichtig ist das
-/// Störmeldesystem, das könnte unten sein anstatt Asset Manager“).
+/// Störmeldesystem, das könnte unten sein anstatt Asset Manager“). Ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23) — es gehört
+/// nicht in die Vorgabe der Leiste (`inVorgabe`), steht unter „Mehr“ und lässt sich über „Leiste anpassen“ nach unten holen.
 enum Bereich: String, CaseIterable, Identifiable, Codable {
     case dienstanweisung
     case meldungen
@@ -13,6 +14,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
     case informationen
     case schiffstatus
     case kiChat = "ki_chat"
+    case bordbuch
 
     var id: String { rawValue }
 
@@ -27,6 +29,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .informationen: "Informationen"
         case .schiffstatus: "Schiffstatus"
         case .kiChat: "KI-Chat"
+        case .bordbuch: "Bordbuch"
         }
     }
 
@@ -38,7 +41,8 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// SF Symbol — entspricht dem Material-Symbol im Dummy (campaign, report, devices, qr_code_scanner, info, directions_boat, forum).
+    /// SF Symbol — entspricht dem Material-Symbol im Dummy (campaign, report, devices, qr_code_scanner, info, directions_boat, forum,
+    /// menu_book).
     var symbol: String {
         switch self {
         case .dienstanweisung: "megaphone"
@@ -49,6 +53,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .informationen: "info.circle"
         case .schiffstatus: "ferry"
         case .kiChat: "bubble.left.and.bubble.right"
+        case .bordbuch: "book.closed"
         }
     }
 
@@ -63,6 +68,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .informationen: nil
         case .schiffstatus: "schiffstatus"
         case .kiChat: "ki_chat"
+        case .bordbuch: "bordbuch"
         }
     }
 
@@ -75,9 +81,14 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .assetManager: "am_assets_neu"
         case .schiffstatus: "schiffstatus"
         case .kiChat: "ki_chat"
+        case .bordbuch: "bordbuch"   // KAI zeigt es in der App nur zum Lesen (BordbuchLesen.vue)
         case .scannen, .informationen: nil
         }
     }
+
+    /// Gehört der Bereich in die Vorgabe der Leiste? Das Bordbuch nicht (Peter 2026-11-23): es steht unter „Mehr“, bis die Person
+    /// es selbst über „Leiste anpassen“ nach unten holt.
+    var inVorgabe: Bool { self != .bordbuch }
 
     /// Darf die Person den Bereich sehen? Leserecht genügt (`read` oder `write`).
     func erlaubt(_ rechte: [String: String]) -> Bool {
@@ -103,9 +114,9 @@ struct Leiste: Equatable {
     }
 
     /// Vorgabe: die ersten drei sichtbaren Bereiche in der Reihenfolge des Dummys. Wer den Störmeldedienst lesen darf, hat ihn
-    /// unten statt des Asset Managers — der steht dann unter „Mehr“.
+    /// unten statt des Asset Managers — der steht dann unter „Mehr“. Bereiche mit `inVorgabe == false` (Bordbuch) nie.
     static func vorgabe(_ rechte: [String: String]) -> [Bereich] {
-        var kandidaten = sichtbar(rechte)
+        var kandidaten = sichtbar(rechte).filter(\.inVorgabe)
         if kandidaten.contains(.stoermeldedienst) { kandidaten.removeAll { $0 == .assetManager } }
         return Array(kandidaten.prefix(hoechstens))
     }
