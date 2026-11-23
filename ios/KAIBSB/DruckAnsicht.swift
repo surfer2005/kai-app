@@ -143,7 +143,7 @@ struct DruckAnsicht: View {
                 meldung = ("Etikett an \(modell.name) gesendet.", .gruen)
             } catch {
                 meldung = (error.localizedDescription, .rot)
-                if case DruckFehler.keinBluetoothDrucker = error { keinDrucker = true }
+                if let f = error as? DruckFehler, case .keinBluetoothDrucker = f { keinDrucker = true }
             }
             druckt = false
         }
