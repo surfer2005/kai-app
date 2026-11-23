@@ -2,7 +2,7 @@ import UIKit
 import CoreImage
 import CoreImage.CIFilterBuiltins
 
-/// Maße des Geräte-Etiketts. Wie in KAI (Asset Manager → QR-Code drucken): Bandbreite 24 oder 36 mm,
+/// Maße des Geräte-Etiketts. Wie in KAI (Asset Manager → QR-Code drucken): Bandbreite 12, 18, 24 oder 36 mm,
 /// Etikettenlänge 20–120 mm (Vorgabe 40). Das Bild liegt so, wie der Brother-Drucker es erwartet:
 /// Bildbreite = Bandbreite, Bildhöhe = Etikettenlänge.
 struct EtikettMasse: Equatable {
@@ -13,7 +13,8 @@ struct EtikettMasse: Equatable {
 
     /// 10 Bildpunkte je Millimeter — so druckte auch die frühere App; der Drucker rechnet auf seine Auflösung um.
     static let pixelProMm: Double = 10
-    static let bandbreiten = [24, 36]
+    /// 12 und 18 mm dazu (Peter 23.11.: im PT-P710BT liegt gerade 12-mm-Band). PT-P710BT und PT-P750W nehmen höchstens 24 mm.
+    static let bandbreiten = [12, 18, 24, 36]
     static let laengeBereich = 20...120
 
     var pixelBreite: Int { Int((bandMm * Self.pixelProMm).rounded()) }
