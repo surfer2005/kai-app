@@ -91,24 +91,53 @@ struct KaiSeite: View {
     }
 }
 
-struct AssetManagerReiter: View {
+/// Reiter unten für einen Bereich mit KAI-Ansicht (Dienstanweisung, Meldungen, Störmeldedienst, Asset Manager, Schiffstatus,
+/// KI-Chat): die KAI-Seite mit schmaler Kopfleiste. Was die Person dort sehen darf, prüft KAI selbst.
+struct KaiBereichReiter: View {
     @EnvironmentObject private var app: AppZustand
+    let bereich: Bereich
 
     var body: some View {
-        if let seite = app.assetManager {
-            KaiSeite(steuerung: seite, titel: "Asset Manager").id(ObjectIdentifier(seite))
+        if let seite = app.seite(bereich) {
+            KaiSeite(steuerung: seite, titel: bereich.name).id(ObjectIdentifier(seite))
         }
     }
 }
 
-/// Reiter „KI“: der KI-Chat aus KAI (Mikrofon und Vorlesen gehen auch in der App). Wer das Recht nicht hat,
-/// bekommt von KAI selbst den Hinweis.
-struct KIReiter: View {
+/// Reiter „Anmelden“: solange die App die Rechte nicht kennt, die KAI-Anmeldeseite. Nach der Anmeldung liest die App die
+/// Rechte aus KAI und zeigt die Reiter der Person.
+struct AnmeldeReiter: View {
     @EnvironmentObject private var app: AppZustand
 
     var body: some View {
-        if let seite = app.ki {
-            KaiSeite(steuerung: seite, titel: "KI-Chat").id(ObjectIdentifier(seite))
+        if let seite = app.anmeldung {
+            KaiSeite(steuerung: seite, titel: "Anmelden").id(ObjectIdentifier(seite))
         }
+    }
+}
+
+/// Eine KAI-Seite unter „Mehr“ (Bereich, der nicht unten steht, bzw. Benachrichtigungen = #benachrichtigungen,
+/// Mein Konto = #profil): ohne eigene Kopfleiste, den Kopf hat die Navigation des iPhones.
+struct MehrKaiSeite: View {
+    @ObservedObject var steuerung: WebSteuerung
+    let titel: String
+    /// Ansicht, die beim Öffnen gezeigt wird (nur bei der gemeinsamen Seite für Benachrichtigungen/Konto).
+    var ansicht: String?
+
+    var body: some View {
+        KaiSeite(steuerung: steuerung, titel: titel, mitKopf: false)
+            .onAppear { if let ansicht { steuerung.zeigen(ansicht) } }
+            .navigationTitle(titel)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if steuerung.laedt { ProgressView().controlSize(.small) }
+                    Button { steuerung.zurueck() } label: { Image(systemName: "chevron.backward.circle") }
+                        .disabled(!steuerung.kannZurueck)
+                        .accessibilityLabel("Zurück in der Seite")
+                    Button { steuerung.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
+                        .accessibilityLabel("Neu laden")
+                }
+            }
     }
 }

@@ -109,11 +109,11 @@ struct DruckAnsicht: View {
             VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: "printer").font(.largeTitle).foregroundStyle(Farbe.primaer)
                 Text("Noch kein Gerät gewählt").font(.title3.bold())
-                Text("Öffne ein Gerät im Reiter „Asset Manager“ oder scanne sein Etikett — dann erscheint hier das Etikett zum Drucken.")
+                Text("Öffne ein Gerät im Asset Manager oder scanne sein Etikett — dann erscheint hier das Etikett zum Drucken.")
                     .foregroundStyle(Farbe.textLeise)
                 HStack {
-                    Button("Zum Asset Manager") { app.reiter = .assetManager }.buttonStyle(.bordered)
-                    Button("Scannen") { app.reiter = .scannen }.buttonStyle(.bordered)
+                    Button("Zum Asset Manager") { app.oeffne(.assetManager) }.buttonStyle(.bordered)
+                    Button("Scannen") { app.oeffne(.scannen) }.buttonStyle(.bordered)
                 }
             }
         }

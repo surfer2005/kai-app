@@ -103,8 +103,18 @@ enum Start {
     static var umgebung: Umgebung? { wert("umgebung").flatMap(Umgebung.init(rawValue:)) }
     /// Gespeicherte Wahl vergessen → Einrichtung wie beim ersten Start.
     static var zuruecksetzen: Bool { schalter("zuruecksetzen") }
-    /// Welcher Reiter beim Start offen ist: asset, info, ki, scan, mehr, druck, einstellungen.
+    /// Welcher Reiter beim Start offen ist: dienstanweisung, meldungen, stoermelde, asset, scan, info, schiffstatus, ki
+    /// (steht der Bereich nicht unten, öffnet er sich unter „Mehr“), mehr, benachrichtigungen, konto, druck, einstellungen, leiste.
     static var reiter: String? { wert("reiter") }
+    /// Vorführung/Bildschirmfotos ohne Anmeldung: Rechte für die Reiter vorgeben, statt sie aus KAI zu lesen —
+    /// `alle` oder eine Liste der KAI-Rechte, z. B. `dienstanweisung,meldungen,schiffstatus` (jeweils Leserecht).
+    static var rechte: [String: String]? {
+        guard let w = wert("rechte") else { return nil }
+        let schluessel = w == "alle"
+            ? Bereich.allCases.compactMap(\.recht)
+            : w.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        return Dictionary(schluessel.map { ($0, "read") }, uniquingKeysWith: { a, _ in a })
+    }
     /// Vorführung ohne Anmeldung: „Etikett drucken“ zeigt ein deutlich gekennzeichnetes Muster-Etikett.
     static var vorfuehrung: Bool { schalter("vorfuehrung") }
 }

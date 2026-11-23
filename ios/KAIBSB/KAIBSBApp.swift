@@ -25,38 +25,89 @@ struct KAIBSBApp: App {
     }
 }
 
-/// Unten fünf Reiter: drei KAI-Seiten, Scannen, und „Mehr“ (Drucken, Einstellungen).
+/// Die Leiste unten (Klick-Dummy „KAI-App“): links fest „Start“, dahinter bis zu drei Bereiche der Person (aus ihren Rechten in KAI,
+/// selbst wählbar unter Mehr → Leiste anpassen), rechts fest „Mehr“ mit den übrigen Bereichen. Kein Burger-Menü.
 struct HauptAnsicht: View {
     @EnvironmentObject private var app: AppZustand
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
         TabView(selection: $app.reiter) {
-            AssetManagerReiter()
-                .tabItem { Label("Asset Manager", systemImage: "server.rack") }
-                .tag(Reiter.assetManager)
-            InformationenReiter()
-                .tabItem { Label("Informationen", systemImage: "info.circle") }
-                .tag(Reiter.informationen)
-            KIReiter()
-                .tabItem { Label("KI", systemImage: "bubble.left.and.text.bubble.right") }
-                .tag(Reiter.ki)
-            ScanAnsicht()
-                .tabItem { Label("Scannen", systemImage: "qrcode.viewfinder") }
-                .tag(Reiter.scannen)
+            StartReiter()
+                .tabItem { Label("Start", systemImage: "house") }
+                .tag(Reiter.start)
+            ForEach(app.rechte == nil ? [] : app.leiste.unten) { b in
+                BereichReiter(bereich: b)
+                    .tabItem { Label(b.leistenName, systemImage: b.symbol) }
+                    .tag(Reiter.bereich(b))
+            }
             MehrReiter()
                 .tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
                 .tag(Reiter.mehr)
         }
+        // Zurück in die App: Rechte neu lesen (in KAI geändert, inzwischen abgemeldet …)
+        .onChange(of: phase) { _, neu in if neu == .active { app.rechtePruefen() } }
     }
 }
 
-/// „Mehr“: Benachrichtigungen und Konto (aus KAI), Etikett drucken, Einstellungen.
+/// Reiter „Start“: die KAI-Startseite in App-Darstellung (Begrüßung, Hinweis, „In der App“ — AppStart.vue in KAI); ohne Anmeldung
+/// zeigt KAI dort die Anmeldeseite. Ohne eigene Kopfleiste — Glocke und Kürzel stehen in der Seite.
+struct StartReiter: View {
+    @EnvironmentObject private var app: AppZustand
+
+    var body: some View {
+        if let seite = app.anmeldung {
+            KaiSeite(steuerung: seite, titel: "Start", mitKopf: false).id(ObjectIdentifier(seite))
+        }
+    }
+}
+
+/// Ein Bereich als Reiter unten.
+struct BereichReiter: View {
+    let bereich: Bereich
+
+    var body: some View {
+        switch bereich {
+        case .scannen: ScanReiter()
+        case .informationen: InformationenReiter()
+        default: KaiBereichReiter(bereich: bereich)
+        }
+    }
+}
+
+/// Ein Bereich unter „Mehr“ (in dessen Navigation).
+struct BereichInMehr: View {
+    @EnvironmentObject private var app: AppZustand
+    let bereich: Bereich
+
+    var body: some View {
+        switch bereich {
+        case .scannen: ScanAnsicht()
+        case .informationen: InformationenListe()
+        default:
+            if let seite = app.seite(bereich) {
+                MehrKaiSeite(steuerung: seite, titel: bereich.name)
+            }
+        }
+    }
+}
+
+/// „Mehr“: die Bereiche, die nicht unten stehen, Benachrichtigungen und Konto (aus KAI), Leiste anpassen, Etikett drucken, Einstellungen.
 struct MehrReiter: View {
     @EnvironmentObject private var app: AppZustand
 
     var body: some View {
         NavigationStack(path: $app.mehrPfad) {
             List {
+                if app.rechte != nil, !app.leiste.mehr.isEmpty {
+                    Section("Weitere Bereiche") {
+                        ForEach(app.leiste.mehr) { b in
+                            NavigationLink(value: MehrZiel.bereich(b)) {
+                                Label { Text(b.name) } icon: { Image(systemName: b.symbol).foregroundStyle(Farbe.primaer) }
+                            }
+                        }
+                    }
+                }
                 Section {
                     NavigationLink(value: MehrZiel.benachrichtigungen) {
                         Label { Text("Benachrichtigungen") } icon: { Image(systemName: "bell").foregroundStyle(Farbe.primaer) }
@@ -67,11 +118,20 @@ struct MehrReiter: View {
                 } footer: {
                     Text("Aus KAI — mit deiner Anmeldung.")
                 }
-                NavigationLink(value: MehrZiel.drucken) {
-                    Label { Text("Etikett drucken") } icon: { Image(systemName: "printer").foregroundStyle(Farbe.primaer) }
-                }
-                NavigationLink(value: MehrZiel.einstellungen) {
-                    Label { Text("Einstellungen") } icon: { Image(systemName: "gearshape").foregroundStyle(Farbe.primaer) }
+                Section {
+                    if app.rechte != nil {
+                        NavigationLink(value: MehrZiel.leiste) {
+                            Label { Text("Leiste anpassen") } icon: { Image(systemName: "dock.rectangle").foregroundStyle(Farbe.primaer) }
+                        }
+                    }
+                    if app.darf(.assetManager) {
+                        NavigationLink(value: MehrZiel.drucken) {
+                            Label { Text("Etikett drucken") } icon: { Image(systemName: "printer").foregroundStyle(Farbe.primaer) }
+                        }
+                    }
+                    NavigationLink(value: MehrZiel.einstellungen) {
+                        Label { Text("Einstellungen") } icon: { Image(systemName: "gearshape").foregroundStyle(Farbe.primaer) }
+                    }
                 }
             }
             .navigationTitle("Mehr")
@@ -82,12 +142,27 @@ struct MehrReiter: View {
             }
             .navigationDestination(for: MehrZiel.self) { ziel in
                 switch ziel {
-                case .benachrichtigungen: MehrKaiSeite(titel: "Benachrichtigungen", ansicht: "benachrichtigungen")
-                case .konto: MehrKaiSeite(titel: "Mein Konto", ansicht: "profil")
+                case .bereich(let b): BereichInMehr(bereich: b)
+                case .benachrichtigungen: MehrSeiteAusKai(titel: "Benachrichtigungen", ansicht: "benachrichtigungen")
+                case .konto: MehrSeiteAusKai(titel: "Mein Konto", ansicht: "profil")
+                case .leiste: LeisteAnpassenAnsicht()
                 case .drucken: DruckAnsicht()
                 case .einstellungen: EinstellungenAnsicht()
                 }
             }
+        }
+    }
+}
+
+/// Benachrichtigungen (#benachrichtigungen) bzw. Mein Konto (#profil) — eine gemeinsame KAI-Seite unter „Mehr“.
+struct MehrSeiteAusKai: View {
+    @EnvironmentObject private var app: AppZustand
+    let titel: String
+    let ansicht: String
+
+    var body: some View {
+        if let seite = app.mehrSeite {
+            MehrKaiSeite(steuerung: seite, titel: titel, ansicht: ansicht)
         }
     }
 }
@@ -153,32 +228,5 @@ struct EinrichtungAnsicht: View {
             .padding(20)
         }
         .background(Farbe.hintergrund.ignoresSafeArea())
-    }
-}
-
-/// Eine KAI-Ansicht unter „Mehr“ (Benachrichtigungen = #benachrichtigungen, Mein Konto = #profil).
-struct MehrKaiSeite: View {
-    @EnvironmentObject private var app: AppZustand
-    let titel: String
-    let ansicht: String
-
-    var body: some View {
-        Group {
-            if let seite = app.mehrSeite {
-                KaiSeite(steuerung: seite, titel: titel, mitKopf: false)
-                    .onAppear { seite.zeigen(ansicht) }
-            }
-        }
-        .navigationTitle(titel)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let seite = app.mehrSeite {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { seite.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
-                        .accessibilityLabel("Neu laden")
-                }
-            }
-        }
-        .background(Farbe.hintergrund)
     }
 }

@@ -21,33 +21,34 @@ struct InfoPunkt: Identifiable, Hashable {
     ]
 }
 
-/// Reiter „Informationen“: die Punkte des Infocenters als Liste, jeder öffnet die KAI-Ansicht.
+/// Reiter „Informationen“ (unten): die Punkte des Infocenters als Liste, jeder öffnet die KAI-Ansicht.
 /// Was du in KAI nicht sehen darfst, zeigt KAI auch hier nicht.
 struct InformationenReiter: View {
+    var body: some View {
+        NavigationStack { InformationenListe() }
+    }
+}
+
+/// Die Liste der Infocenter-Punkte — unten als eigener Reiter oder unter „Mehr“ (dann in dessen Navigation).
+struct InformationenListe: View {
     @EnvironmentObject private var app: AppZustand
-    @State private var pfad: [InfoPunkt] = []
 
     var body: some View {
-        NavigationStack(path: $pfad) {
-            List {
-                Section {
-                    ForEach(InfoPunkt.alle) { punkt in
-                        NavigationLink(value: punkt) {
-                            Label { Text(punkt.name) } icon: { Image(systemName: punkt.symbol).foregroundStyle(Farbe.primaer) }
-                        }
+        List {
+            Section {
+                ForEach(InfoPunkt.alle) { punkt in
+                    NavigationLink { InfoSeite(punkt: punkt) } label: {
+                        Label { Text(punkt.name) } icon: { Image(systemName: punkt.symbol).foregroundStyle(Farbe.primaer) }
                     }
-                } footer: {
-                    Text("Die Ansichten kommen direkt aus KAI — mit deiner Anmeldung und deinen Rechten.")
                 }
+            } footer: {
+                Text("Die Ansichten kommen direkt aus KAI — mit deiner Anmeldung und deinen Rechten.")
             }
-            .navigationTitle("Informationen")
-            .toolbar {
-                if let u = app.umgebung {
-                    ToolbarItem(placement: .topBarTrailing) { UmgebungsKennzeichen(umgebung: u) }
-                }
-            }
-            .navigationDestination(for: InfoPunkt.self) { punkt in
-                InfoSeite(punkt: punkt)
+        }
+        .navigationTitle("Informationen")
+        .toolbar {
+            if let u = app.umgebung {
+                ToolbarItem(placement: .topBarTrailing) { UmgebungsKennzeichen(umgebung: u) }
             }
         }
     }

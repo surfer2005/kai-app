@@ -51,7 +51,7 @@ struct EinstellungenAnsicht: View {
                         case .none: ProgressView().controlSize(.small)
                         }
                     }
-                    Button("In KAI anmelden") { app.reiter = .assetManager }
+                    Button("In KAI anmelden") { app.zumAnmelden() }
                         .disabled(angemeldet == true)
                     Button("Abmelden", role: .destructive) {
                         Task { await app.abmelden(); await pruefen() }

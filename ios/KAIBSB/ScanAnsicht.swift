@@ -1,7 +1,14 @@
 import SwiftUI
 import AVFoundation
 
-/// Reiter „Scannen“: QR-Code oder Barcode lesen → Gerät im Asset Manager öffnen. Geht auch ohne Kamera über die Eingabe.
+/// Reiter „Scannen“ (unten): eigene Navigation um die Scan-Ansicht. Unter „Mehr“ steht die Scan-Ansicht in dessen Navigation.
+struct ScanReiter: View {
+    var body: some View {
+        NavigationStack { ScanAnsicht() }
+    }
+}
+
+/// „Scannen“: QR-Code oder Barcode lesen → Gerät im Asset Manager öffnen. Geht auch ohne Kamera über die Eingabe.
 struct ScanAnsicht: View {
     @EnvironmentObject private var app: AppZustand
     @State private var kameraErlaubt = AVCaptureDevice.authorizationStatus(for: .video)
@@ -11,7 +18,7 @@ struct ScanAnsicht: View {
     @State private var arbeitet = false
 
     var body: some View {
-        NavigationStack {
+        Group {
             VStack(spacing: 0) {
                 kamera
                     .frame(maxWidth: .infinity)
@@ -63,7 +70,7 @@ struct ScanAnsicht: View {
             platzhalter("camera.metering.unknown", "Keine Kamera verfügbar (z. B. im Simulator). Gib den Code unten ein.")
         } else if kameraErlaubt == .authorized {
             ZStack(alignment: .bottom) {
-                KameraAnsicht(aktiv: sichtbar && app.reiter == .scannen) { text in verarbeiten(text) }
+                KameraAnsicht(aktiv: sichtbar && app.zeigt(.scannen)) { text in verarbeiten(text) }
                 Text("Etikett in den Rahmen halten")
                     .font(.footnote)
                     .padding(.horizontal, 12).padding(.vertical, 6)
@@ -96,7 +103,7 @@ struct ScanAnsicht: View {
     @ViewBuilder private var ergebnis: some View {
         switch zustand {
         case .bereit:
-            Text("Scanne das QR-Etikett eines Geräts (aus KAI oder dem alten Asset Manager) oder einen Barcode mit Gerätename bzw. Seriennummer. Gefundene Geräte öffnen sich im Reiter „Asset Manager“.")
+            Text("Scanne das QR-Etikett eines Geräts (aus KAI oder dem alten Asset Manager) oder einen Barcode mit Gerätename bzw. Seriennummer. Gefundene Geräte öffnen sich im Asset Manager.")
                 .font(.footnote)
                 .foregroundStyle(Farbe.textLeise)
         case let .hinweis(text, ton):

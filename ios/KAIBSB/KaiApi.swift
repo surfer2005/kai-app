@@ -2,6 +2,8 @@ import Foundation
 
 struct KaiFehler: LocalizedError {
     let text: String
+    /// Nicht (mehr) angemeldet: kein Token oder KAI antwortet 401.
+    var abgemeldet = false
     var errorDescription: String? { text }
 }
 
@@ -54,6 +56,21 @@ struct KaiApi {
         return try await holen("asset-manager/assets?q=\(q)&limit=20", als: ListenAntwort.self).items
     }
 
+    /// `GET /api/auth/me` → effektive Rechte je Ansicht (`permissions`: Ansicht → none | read | write), wie im Browser
+    /// (`client/src/auth.js`, canRead). Danach richtet die App ihre Reiter aus.
+    func rechte() async throws -> [String: String] {
+        let daten = try await rohHolen("auth/me")
+        guard let obj = try JSONSerialization.jsonObject(with: daten) as? [String: Any] else {
+            throw KaiFehler(text: "KAI antwortet unerwartet (Anmeldung).")
+        }
+        return Self.rechteAus(obj)
+    }
+
+    /// Rechte aus der Antwort von `/api/auth/me` — nur Texteinträge (none/read/write), anderes wird übergangen.
+    static func rechteAus(_ antwort: [String: Any]) -> [String: String] {
+        ((antwort["permissions"] as? [String: Any]) ?? [:]).compactMapValues { $0 as? String }
+    }
+
     /// Alte Asset-Manager-Nummer → KAI-Gerät. KAI kennt die Übersetzung (`/api/go/asset/:alteNr` leitet nach
     /// `#am_assets?asset=<id>` um). Die App folgt der Umleitung nicht, sondern liest nur die Nummer daraus —
     /// die Umleitung zeigt in der Testumgebung sonst auf die Produktion.
@@ -80,8 +97,12 @@ struct KaiApi {
     // MARK: - Hilfen
 
     private func holen<T: Decodable>(_ pfad: String, als: T.Type) async throws -> T {
+        try JSONDecoder().decode(T.self, from: try await rohHolen(pfad))
+    }
+
+    private func rohHolen(_ pfad: String) async throws -> Data {
         guard let token, !token.isEmpty else {
-            throw KaiFehler(text: "Du bist in KAI nicht angemeldet. Bitte zuerst im Reiter „Asset Manager“ anmelden.")
+            throw KaiFehler(text: "Du bist in KAI nicht angemeldet. Bitte zuerst in der App anmelden.", abgemeldet: true)
         }
         guard let url = URL(string: umgebung.adresse + "/api/" + pfad) else { throw KaiFehler(text: "Ungültige Adresse.") }
         var anfrage = URLRequest(url: url)
@@ -92,13 +113,13 @@ struct KaiApi {
         let (daten, antwort) = try await sitzung.data(for: anfrage)
         guard let http = antwort as? HTTPURLResponse else { throw KaiFehler(text: "Keine Antwort von KAI.") }
         if http.statusCode == 401 {
-            throw KaiFehler(text: "Die Anmeldung ist abgelaufen. Bitte im Reiter „Asset Manager“ neu anmelden.")
+            throw KaiFehler(text: "Die Anmeldung ist abgelaufen. Bitte in der App neu anmelden.", abgemeldet: true)
         }
         guard (200..<300).contains(http.statusCode) else {
             let text = (try? JSONDecoder().decode(FehlerAntwort.self, from: daten))?.error
             throw KaiFehler(text: text ?? "KAI antwortet mit Fehler \(http.statusCode).")
         }
-        return try JSONDecoder().decode(T.self, from: daten)
+        return daten
     }
 }
 

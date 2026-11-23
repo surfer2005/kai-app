@@ -12,9 +12,18 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   **Produktion** (`kai-bsb.de`) oder **Entwicklung** (`peter.kechel.de`). Später in den Einstellungen änderbar.
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
-- Unten fünf Reiter: **Asset Manager · Informationen · KI · Scannen · Mehr** (unter „Mehr“: Benachrichtigungen und Mein Konto
-  aus KAI, Etikett drucken, Einstellungen). In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die
-  Seitenleiste aus — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
+- **Leiste unten** (Klick-Dummy „KAI-App“): links fest **Start**, dazwischen bis zu **drei Bereiche**, rechts fest **Mehr**.
+  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat.
+  Welche jemand sieht, kommt aus KAI: nach der Anmeldung liest die App die Rechte (`GET /api/auth/me`, Leserecht genügt;
+  Informationen für alle, Scannen mit dem Recht Asset Manager). Vorgabe: die ersten drei in dieser Reihenfolge — wer den
+  Störmeldedienst lesen darf, hat ihn statt des Asset Managers unten. Unter **Mehr → Leiste anpassen** wählt jede Person selbst,
+  welche drei unten stehen und in welcher Reihenfolge (gemerkt auf dem iPhone, „Vorgabe wiederherstellen“); fällt ein Recht weg,
+  verschwindet der Bereich auch aus der Wahl. Alle übrigen Bereiche stehen unter „Mehr“ (dazu Benachrichtigungen und Mein Konto
+  aus KAI, Etikett drucken, Einstellungen). Ohne Anmeldung gibt es nur „Start“ (mit der KAI-Anmeldeseite) und „Mehr“.
+- **Start** zeigt die KAI-Startseite in App-Darstellung (KAI: `AppStart.vue`): Begrüßung, Glocke und Kürzel, ein Hinweis, wenn
+  etwas ansteht, und die eigenen Bereiche mit Zahlen — ein Tipp wechselt in den Bereich.
+- In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
+  das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Asset Manager** und **Informationen** (Zielanzeiger, GPS-Karte, Wetter, Telefonnummern, Schiffseinsatzplan,
   Dienstplan, Charter- und Cateringübersicht, Bereitschaftsplan, Portale): die KAI-Ansichten selbst, mit deinen Rechten.
   Telefonnummern lassen sich direkt anrufen.
@@ -72,11 +81,13 @@ Nur im Simulator ausprobieren geht ohne Apple-ID und ohne Kabel: im Schritt 7 ei
 
 Bei jedem Hochladen auf `main` (`.github/workflows/ios.yml`): Druckcode gegen die Brother-Attrappe prüfen, Projekt aus
 `ios/project.yml` erzeugen (XcodeGen), bauen, Prüfungen (`ios/KAIBSBTests`: Umgebungs-Adressen, Erkennen von Etiketten und
-Gerätenamen, Etikett-Maße je Bandbreite), Bildschirmfotos im Simulator (`ios/werkzeuge/bildschirmfotos.sh`). Am Lauf
+Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl), Bildschirmfotos im Simulator (`ios/werkzeuge/bildschirmfotos.sh`). Am Lauf
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
-`-reiter asset|info|ki|scan|mehr|druck|einstellungen`, `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
+`-reiter dienstanweisung|meldungen|stoermelde|asset|scan|info|schiffstatus|ki|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`,
+`-rechte alle` bzw. `-rechte dienstanweisung,meldungen,…` (Reiter ohne Anmeldung vorführen; KAI-Seiten zeigen dann die Anmeldeseite),
+`-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
 
 ## Nächste Schritte (Konzept)
 

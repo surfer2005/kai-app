@@ -2,8 +2,18 @@ import SwiftUI
 import UIKit
 import WebKit
 
-/// Eine KAI-Seite in der App (Asset Manager bzw. Informationen). Beide teilen sich den Website-Speicher des iPhones:
-/// die Anmeldung (Token `lpv_token` im localStorage, wie im Browser) gilt in beiden und bleibt nach dem Schließen erhalten.
+/// Stand der Anmeldung in einer KAI-Seite.
+enum AnmeldeStand: Equatable {
+    /// Seite noch nicht (fertig) geladen — keine Aussage möglich.
+    case nichtGeladen
+    /// Offline-Anmeldung am Schiffsterminal (Platzhalter-Token) — keine Aussage über die Rechte.
+    case ohneNetz
+    case abgemeldet
+    case angemeldet(String)
+}
+
+/// Eine KAI-Seite in der App (je Bereich eine). Alle teilen sich den Website-Speicher des iPhones:
+/// die Anmeldung (Token `lpv_token` im localStorage, wie im Browser) gilt in allen und bleibt nach dem Schließen erhalten.
 @MainActor
 final class WebSteuerung: NSObject, ObservableObject {
     @Published private(set) var kannZurueck = false
@@ -15,6 +25,12 @@ final class WebSteuerung: NSObject, ObservableObject {
     let startAnsicht: String
     /// Meldet, wenn in der KAI-Seite ein Gerät geöffnet wurde (id, Name) — für „Etikett drucken“.
     var geraetGeoeffnet: ((Int, String?) -> Void)?
+    /// Meldet, wenn sich die Anmeldung geändert haben kann (Seite geladen, KAI hat das Token geschrieben oder entfernt) —
+    /// die App liest dann die Rechte neu und stellt die Reiter danach.
+    var anmeldungGeaendert: (() -> Void)?
+    /// Start der App (KAI AppStart.vue, `anAppMelden`): ein Bereich wurde angetippt bzw. Glocke/Kürzel („mehr“, Ziel).
+    var bereichGewaehlt: ((Bereich) -> Void)?
+    var mehrGewaehlt: ((String) -> Void)?
 
     private var beobachter: [NSKeyValueObservation] = []
     private var geladen = false
@@ -105,28 +121,46 @@ final class WebSteuerung: NSObject, ObservableObject {
         webView.evaluateJavaScript(skript, completionHandler: nil)
     }
 
-    /// Token der Anmeldung aus dem localStorage der KAI-Seite (leer = nicht angemeldet).
+    /// Token der Anmeldung aus der KAI-Seite (leer = nicht angemeldet). Wie KAI selbst (error-report.js): zuerst der
+    /// sessionStorage (Anmeldung von außerhalb des Firmennetzes, endet mit dem Fenster), sonst der localStorage.
     func token() async -> String? {
-        guard umgebung.enthaelt(webView.url) else { return nil }
+        if case .angemeldet(let t) = await anmeldeStand() { return t }
+        return nil
+    }
+
+    /// Anmeldung in dieser Seite: noch nicht geladen, ohne Netz (Offline-Anmeldung), abgemeldet oder angemeldet (Token).
+    func anmeldeStand() async -> AnmeldeStand {
+        guard umgebung.enthaelt(webView.url), !webView.isLoading else { return .nichtGeladen }
         let wert: String = await withCheckedContinuation { fertig in
-            webView.evaluateJavaScript("(function(){ try { return localStorage.getItem('lpv_token') || '' } catch (e) { return '' } })()") { ergebnis, _ in
+            webView.evaluateJavaScript("(function(){ try { return sessionStorage.getItem('lpv_token') || localStorage.getItem('lpv_token') || '' } catch (e) { return '' } })()") { ergebnis, _ in
                 fertig.resume(returning: (ergebnis as? String) ?? "")
             }
         }
-        return wert.isEmpty || wert == "offline" ? nil : wert
+        if wert.isEmpty { return .abgemeldet }
+        if wert == "offline" { return .ohneNetz }
+        return .angemeldet(wert)
     }
 
     /// Abmelden wie in KAI: Token entfernen und die Seite neu laden (zeigt dann die Anmeldung).
     func abmelden() async {
         guard umgebung.enthaelt(webView.url) else { return }
         _ = await withCheckedContinuation { (fertig: CheckedContinuation<Void, Never>) in
-            webView.evaluateJavaScript("try { localStorage.removeItem('lpv_token') } catch (e) {}; null") { _, _ in fertig.resume() }
+            webView.evaluateJavaScript("try { localStorage.removeItem('lpv_token'); sessionStorage.removeItem('lpv_token') } catch (e) {}; null") { _, _ in fertig.resume() }
         }
         zurStartansicht()
     }
 
     fileprivate func nachricht(_ inhalt: Any) {
-        guard let d = inhalt as? [String: Any], d["art"] as? String == "geraet" else { return }
+        guard let d = inhalt as? [String: Any] else { return }
+        switch (d["art"] as? String) ?? "" {
+        case "anmeldung": anmeldungGeaendert?(); return
+        case "bereich":
+            if let id = d["id"] as? String, let b = Bereich(rawValue: id) { bereichGewaehlt?(b) }
+            return
+        case "mehr": mehrGewaehlt?((d["ziel"] as? String) ?? ""); return
+        default: break
+        }
+        guard d["art"] as? String == "geraet" else { return }
         let id = (d["id"] as? Int) ?? (d["id"] as? NSNumber)?.intValue ?? 0
         guard id > 0 else { return }
         let name = (d["name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
@@ -142,10 +176,16 @@ final class WebSteuerung: NSObject, ObservableObject {
 
     /// Merkt, welches Gerät die KAI-Seite gerade lädt: KAI holt ein geöffnetes Gerät über
     /// `GET /api/asset-manager/assets/<id>`. Ändert nichts an der Seite, liest nur mit.
+    /// Dazu: schreibt oder entfernt KAI das Token (`lpv_token`, Anmelden/Abmelden/Erneuern), meldet die Seite das der App.
     static let beobachterSkript = """
     (function () {
       if (window.__kaiApp) return; window.__kaiApp = true;
       var melden = function (d) { try { window.webkit.messageHandlers.kaiApp.postMessage(d) } catch (e) {} };
+      try {
+        var sp = Storage.prototype, setzen = sp.setItem, entfernen = sp.removeItem;
+        sp.setItem = function (k) { var r = setzen.apply(this, arguments); if (k === 'lpv_token') melden({ art: 'anmeldung' }); return r; };
+        sp.removeItem = function (k) { var r = entfernen.apply(this, arguments); if (k === 'lpv_token') melden({ art: 'anmeldung' }); return r; };
+      } catch (e) {}
       var muster = /\\/api\\/asset-manager\\/assets\\/(\\d+)(?:\\?|$)/;
       var original = window.fetch;
       if (!original) return;
@@ -181,6 +221,10 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         fehler = nil
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        anmeldungGeaendert?()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
