@@ -35,7 +35,7 @@ der WLAN-Weg (PT-P750W über IP-Adresse) ist neu.
 
 Das Brother Print SDK v4 (`BRLMPrinterKit.xcframework`) liegt aus Lizenzgründen **nicht** in diesem Repository. Ohne es
 baut und läuft die App, nur „Drucken“ meldet **„Drucker-Baustein fehlt“** (die Vorschau geht trotzdem). Mit dem SDK im
-Ordner `Frameworks/` findet Xcode es selbst und bettet es signiert in die App ein (`ios/project.yml`, Schritt „Brother-Baustein
+Ordner `Frameworks/` oder einmal fest unter `~/Documents/Brother/` findet Xcode es selbst und bettet es signiert in die App ein (`ios/project.yml`, Schritt „Brother-Baustein
 einbetten“). GitHub prüft den Druckcode gegen eine Attrappe der Schnittstellen (`ios/werkzeuge/brother-attrappe/`).
 
 ## Aufs eigene iPhone (kostenlos, über den Mac)
@@ -43,9 +43,11 @@ einbetten“). GitHub prüft den Druckcode gegen eine Attrappe der Schnittstelle
 1. **Xcode** aus dem Mac App Store installieren (kostenlos; beim ersten Start die iOS-Plattform mitladen).
 2. Bei GitHub im Repository `surfer2005/kai-app` → **Actions** → letzter grüner Lauf „iOS“ → unten den Anhang
    **KAIBSB-Xcode** herunterladen und entpacken.
-3. **Brother-Baustein einmal hineinkopieren:** aus dem früheren Projekt den Ordner `BRLMPrinterKit.xcframework`
-   (z. B. `Xcode/AssetManager/BRLMPrinterKit.xcframework`) nach `KAIBSB-Xcode/Frameworks/` kopieren.
-   Ohne diesen Schritt läuft die App auch, nur ohne Drucken.
+3. **Brother-Baustein EINMAL auf den Mac legen:** den Ordner `BRLMPrinterKit.xcframework` (aus dem früheren Projekt,
+   z. B. `Xcode/AssetManager/BRLMPrinterKit.xcframework`) nach **Dokumente → Brother** kopieren, also
+   `~/Documents/Brother/BRLMPrinterKit.xcframework`. Jede neue Fassung findet ihn dort selbst — nichts mehr hineinkopieren.
+   (Beim ersten Bauen fragt macOS evtl., ob Xcode auf „Dokumente“ zugreifen darf → erlauben.) Weiterhin möglich: nach
+   `KAIBSB-Xcode/Frameworks/` kopieren, das geht vor. Ohne Baustein läuft die App auch, nur ohne Drucken.
 4. `KAIBSB.xcodeproj` doppelklicken. In Xcode: **Xcode → Settings → Accounts** → „+“ → eigene **Apple-ID** anmelden
    (kostenlos, kein Entwicklerprogramm nötig).
 5. Links das Projekt **KAIBSB** → Ziel **KAIBSB** → Reiter **Signing & Capabilities** → bei **Team** das „Personal Team“

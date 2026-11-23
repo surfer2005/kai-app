@@ -2,7 +2,9 @@
 # Das Xcode-Projekt selbst liegt nicht im Repository; so bleibt nur diese eine, lesbare Datei zu pflegen.
 #
 # Brother Print SDK (BRLMPrinterKit.xcframework): liegt aus Lizenzgründen NICHT im Repository. Wer es hat, kopiert es
-# nach `Frameworks/` (neben dieser Datei bzw. neben KAIBSB.xcodeproj). Dann findet der Übersetzer es über die
+# nach `Frameworks/` (neben dieser Datei bzw. neben KAIBSB.xcodeproj) — oder legt es EINMAL fest auf den Mac nach
+# `~/Documents/Brother/BRLMPrinterKit.xcframework` (Finder: Dokumente → Brother; Peter 2026-11-23: dann muss es nicht in jede
+# neue Fassung kopiert werden). `Frameworks/` geht vor. Dann findet der Übersetzer es über die
 # Suchpfade unten (`#if canImport(BRLMPrinterKit)` wird wahr) und der Schritt „Brother-Baustein einbetten“ legt es
 # signiert in die App. Ohne SDK baut alles wie gehabt, nur Drucken meldet „Drucker-Baustein fehlt“.
 name: KAIBSB
@@ -19,8 +21,8 @@ settings:
     # Welche Umgebung beim ersten Start vorgewählt ist: test | produktion | entwicklung
     KAI_UMGEBUNG_VORGABE: test
     # Suchpfade für das Brother-SDK (für App UND Prüfungen; fehlt der Ordner, gibt es nur eine Warnung).
-    "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64"
-    "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64_x86_64-simulator"
+    "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64 $(HOME)/Documents/Brother/BRLMPrinterKit.xcframework/ios-arm64"
+    "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(PROJECT_DIR)/Frameworks/BRLMPrinterKit.xcframework/ios-arm64_x86_64-simulator $(HOME)/Documents/Brother/BRLMPrinterKit.xcframework/ios-arm64_x86_64-simulator"
 targets:
   KAIBSB:
     type: application
@@ -61,10 +63,12 @@ targets:
         showEnvVarsInLog: false
         script: |
           QUELLE="${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework"
+          [ -d "$QUELLE" ] || QUELLE="${HOME}/Documents/Brother/BRLMPrinterKit.xcframework"
           if [ ! -d "$QUELLE" ]; then
-            echo "Brother-Baustein fehlt (Frameworks/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
+            echo "Brother-Baustein fehlt (Frameworks/ bzw. ~/Documents/Brother/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
             exit 0
           fi
+          echo "Brother-Baustein aus $QUELLE"
           if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then SCHEIBE="ios-arm64_x86_64-simulator"; else SCHEIBE="ios-arm64"; fi
           FW="$QUELLE/$SCHEIBE/BRLMPrinterKit.framework"
           if [ ! -d "$FW" ]; then echo "error: $FW fehlt — ist es das Brother-SDK v4 (xcframework)?"; exit 1; fi
