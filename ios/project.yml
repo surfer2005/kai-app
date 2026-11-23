@@ -75,24 +75,36 @@ targets:
           done
           if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then echo "Simulator: ohne Brother-Baustein (Drucken nur auf dem iPhone)."; exit 0; fi
           echo "Suche Brother-Baustein (HOME=$HOME, Skript-Sandbox=${ENABLE_USER_SCRIPT_SANDBOXING:-?}):"
+          # Gesucht wird überall, wo auch der Übersetzer sucht (Peter 23.11.: Übersetzer fand ihn, dieser Schritt nicht):
+          # Frameworks/ und ~/Documents/Brother (je xcframework/ios-arm64), dazu FRAMEWORK_SEARCH_PATHS und BUILT_PRODUCTS_DIR.
+          KANDIDATEN="${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework/ios-arm64
+          ${HOME}/Documents/Brother/BRLMPrinterKit.xcframework/ios-arm64"
+          eval "set -- ${FRAMEWORK_SEARCH_PATHS:-}" 2>/dev/null || set --
+          for D in "$@" "${BUILT_PRODUCTS_DIR:-}"; do [ -n "$D" ] && KANDIDATEN="$KANDIDATEN
+          $D"; done
           QUELLE=""
-          for K in "${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework" "${HOME}/Documents/Brother/BRLMPrinterKit.xcframework"; do
-            if ls -ld "$K/ios-arm64/BRLMPrinterKit.framework/BRLMPrinterKit" >/dev/null 2>&1 && [ -z "$QUELLE" ]; then
-              QUELLE="$K"; echo "  gefunden: $K"
+          FW=""
+          ALTIFS="$IFS"; IFS='
+          '
+          for K in $KANDIDATEN; do
+            K="$(echo "$K" | sed 's/^ *//')"
+            if [ -z "$FW" ] && [ -s "$K/BRLMPrinterKit.framework/BRLMPrinterKit" ] && [ -r "$K/BRLMPrinterKit.framework/BRLMPrinterKit" ]; then
+              FW="$K/BRLMPrinterKit.framework"; QUELLE="$K"; echo "  gefunden: $FW"
             else
-              echo "  $K: $(ls -ld "$K/ios-arm64/BRLMPrinterKit.framework/BRLMPrinterKit" 2>&1 | tail -1)"
+              echo "  $K: $(ls -ld "$K/BRLMPrinterKit.framework/BRLMPrinterKit" 2>&1 | tail -1)"
             fi
           done
+          IFS="$ALTIFS"
+          echo "Inhalt von ~/Documents/Brother:"; ls -la "${HOME}/Documents/Brother" 2>&1 | sed 's/^/  /' | head -15
           if [ -z "$QUELLE" ]; then
             if [ "$VERKNUEPFT" = "1" ]; then
-              echo "error: Die App braucht den Brother-Baustein, dieser Schritt kann ihn aber nicht lesen (Gründe oben). Ohne ihn stürzt die App beim Start ab. Abhilfe: Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Xcode → „Ordner Dokumente“ an — oder BRLMPrinterKit.xcframework nach Frameworks/ neben KAIBSB.xcodeproj kopieren."
+              echo "error: Die App braucht den Brother-Baustein, er wurde aber an keinem Ort gefunden (Orte und Gründe im Protokoll dieses Schritts). Ohne ihn stürzt die App beim Start ab. Abhilfe: BRLMPrinterKit.xcframework nach Dokumente → Brother legen (genau dieser Name) oder nach Frameworks/ neben KAIBSB.xcodeproj; dann Product → Clean Build Folder."
               exit 1
             fi
             echo "Brother-Baustein fehlt (Frameworks/ bzw. ~/Documents/Brother/BRLMPrinterKit.xcframework) — App ohne Etikettendruck gebaut."
             exit 0
           fi
           SCHEIBE="ios-arm64"
-          FW="$QUELLE/$SCHEIBE/BRLMPrinterKit.framework"
           ZIEL="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
           mkdir -p "$ZIEL"
           rm -rf "$ZIEL/BRLMPrinterKit.framework"
