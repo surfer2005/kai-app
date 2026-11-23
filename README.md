@@ -47,7 +47,8 @@ einbetten“). GitHub prüft den Druckcode gegen eine Attrappe der Schnittstelle
    z. B. `Xcode/AssetManager/BRLMPrinterKit.xcframework`) nach **Dokumente → Brother** kopieren, also
    `~/Documents/Brother/BRLMPrinterKit.xcframework`. Jede neue Fassung findet ihn dort selbst — nichts mehr hineinkopieren.
    (Beim ersten Bauen fragt macOS evtl., ob Xcode auf „Dokumente“ zugreifen darf → erlauben.) Weiterhin möglich: nach
-   `KAIBSB-Xcode/Frameworks/` kopieren, das geht vor. Ohne Baustein läuft die App auch, nur ohne Drucken.
+   `KAIBSB-Xcode/Frameworks/` kopieren, das geht vor. Ohne Baustein läuft die App auch, nur ohne Drucken. Im **Simulator**
+   wird der Baustein nie eingebunden (dort stürzte die App mit ihm ab) — Drucken gibt es nur auf dem echten iPhone.
 4. `KAIBSB.xcodeproj` doppelklicken. In Xcode: **Xcode → Settings → Accounts** → „+“ → eigene **Apple-ID** anmelden
    (kostenlos, kein Entwicklerprogramm nötig).
 5. Links das Projekt **KAIBSB** → Ziel **KAIBSB** → Reiter **Signing & Capabilities** → bei **Team** das „Personal Team“
