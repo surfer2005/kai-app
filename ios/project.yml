@@ -62,6 +62,7 @@ targets:
         basedOnDependencyAnalysis: false
         showEnvVarsInLog: false
         script: |
+          set -e
           QUELLE="${PROJECT_DIR}/Frameworks/BRLMPrinterKit.xcframework"
           [ -d "$QUELLE" ] || QUELLE="${HOME}/Documents/Brother/BRLMPrinterKit.xcframework"
           if [ ! -d "$QUELLE" ]; then
@@ -72,15 +73,26 @@ targets:
           if [ "$PLATFORM_NAME" = "iphonesimulator" ]; then SCHEIBE="ios-arm64_x86_64-simulator"; else SCHEIBE="ios-arm64"; fi
           FW="$QUELLE/$SCHEIBE/BRLMPrinterKit.framework"
           if [ ! -d "$FW" ]; then echo "error: $FW fehlt — ist es das Brother-SDK v4 (xcframework)?"; exit 1; fi
+          # Gefunden heißt nicht lesbar: macOS kann Xcode den Ordner „Dokumente“ verwehren — dann lieber hier anhalten als eine App
+          # bauen, die beim Start abstürzt (2026-11-23: dyld __abort_with_payload, Baustein fehlte in der App)
+          if [ ! -r "$FW/BRLMPrinterKit" ] || [ ! -r "$FW/Info.plist" ]; then
+            echo "error: Brother-Baustein gefunden, aber nicht lesbar ($FW). macOS: Systemeinstellungen → Datenschutz & Sicherheit → Dateien und Ordner → Xcode → „Ordner Dokumente“ erlauben — oder den Baustein nach Frameworks/ im Projekt kopieren."
+            exit 1
+          fi
           ZIEL="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
           mkdir -p "$ZIEL"
           rm -rf "$ZIEL/BRLMPrinterKit.framework"
           cp -R "$FW" "$ZIEL/"
+          if [ ! -f "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" ]; then echo "error: Brother-Baustein ließ sich nicht in die App kopieren ($ZIEL)."; exit 1; fi
           rm -rf "$ZIEL/BRLMPrinterKit.framework/Headers" "$ZIEL/BRLMPrinterKit.framework/Modules"
           if [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ] && [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ]; then
             codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none --preserve-metadata=identifier,flags "$ZIEL/BRLMPrinterKit.framework"
           fi
-          echo "Brother-Baustein eingebettet ($SCHEIBE)."
+          echo "Brother-Baustein eingebettet ($SCHEIBE) aus $QUELLE:"
+          ls -la "$ZIEL/BRLMPrinterKit.framework"
+          codesign -dv "$ZIEL/BRLMPrinterKit.framework" 2>&1 | grep -E "Identifier|TeamIdentifier|Authority" || true
+          otool -L "$ZIEL/BRLMPrinterKit.framework/BRLMPrinterKit" 2>/dev/null | head -12 || true
+          /usr/libexec/PlistBuddy -c "Print :MinimumOSVersion" "$ZIEL/BRLMPrinterKit.framework/Info.plist" 2>/dev/null | sed 's/^/MinimumOSVersion /' || true
   KAIBSBTests:
     type: bundle.unit-test
     platform: iOS
