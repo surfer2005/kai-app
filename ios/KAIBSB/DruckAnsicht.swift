@@ -8,6 +8,7 @@ struct DruckAnsicht: View {
     @AppStorage("laenge") private var laenge = 40
     @AppStorage("druckerIP") private var druckerIP = ""
     @AppStorage("druckerSerie") private var druckerSerie = ""
+    @AppStorage("druckerName") private var druckerName = ""
     @State private var keinDrucker = false
 
     @State private var geraet: GeraetKurz?
@@ -136,10 +137,12 @@ struct DruckAnsicht: View {
         druckt = true
         meldung = nil
         keinDrucker = false
-        let modell = modell, band = band, ip = druckerIP, serie = druckerSerie
+        let modell = modell, band = band, ip = druckerIP, serie = druckerSerie, festerName = druckerName
         Task {
             do {
-                try await DruckDienst.drucken(bild, modell: modell, band: band, ip: ip, serie: serie)
+                let benutzt = try await DruckDienst.drucken(bild, modell: modell, band: band, ip: ip, serie: serie, festerName: festerName)
+                // Erster erfolgreicher Druck: diesen Drucker als festen Drucker merken
+                if let benutzt, druckerSerie.isEmpty { druckerSerie = benutzt.serie; druckerName = "\(benutzt.name) (\(benutzt.serie))" }
                 meldung = ("Etikett an \(modell.name) gesendet.", .gruen)
             } catch {
                 meldung = (error.localizedDescription, .rot)

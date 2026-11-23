@@ -21,6 +21,7 @@ enum DruckFehler: LocalizedError {
     case bausteinFehlt
     case bandZuBreit(Int, DruckerModell)
     case keinBluetoothDrucker
+    case festerDruckerAus(String)
     case keineAdresse
     case verbindung(String)
     case druck(String)
@@ -34,6 +35,9 @@ enum DruckFehler: LocalizedError {
             "\(modell.name) nimmt höchstens \(modell.hoechsteBandbreite) mm breites Band — eingestellt sind \(band) mm."
         case .keinBluetoothDrucker:
             "Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen — iOS zeigt dann die Brother-Drucker in der Nähe."
+        case let .festerDruckerAus(name):
+            "Der feste Drucker \(name) ist nicht verbunden. Bitte einschalten — das iPhone verbindet ihn dann von selbst. "
+                + "Einen anderen Drucker wählst du unter „Mehr → Einstellungen“."
         case .keineAdresse:
             "Für den PT-P750W fehlt die IP-Adresse. Bitte in den Einstellungen eintragen oder im WLAN suchen."
         case let .verbindung(text):
@@ -45,7 +49,7 @@ enum DruckFehler: LocalizedError {
 }
 
 /// Ein über Bluetooth verbundener Brother-Drucker (PT-P710BT). Die Seriennummer unterscheidet mehrere gleiche Drucker.
-struct BluetoothDrucker: Identifiable, Equatable {
+struct BluetoothDrucker: Identifiable, Equatable, Sendable {
     let name: String
     let serie: String
     var id: String { serie }
@@ -103,22 +107,35 @@ enum DruckDienst {
             || zubehoer.protocolStrings.contains("com.brother.ptcbep")
     }
 
-    static func drucken(_ bild: UIImage, modell: DruckerModell, band: Int, ip: String, serie: String = "") async throws {
+    /// Druckt das Etikett. Rückgabe beim PT-P710BT: Name und Seriennummer des Druckers, auf dem gedruckt wurde
+    /// (die App merkt ihn sich danach als festen Drucker, Peter 23.11.).
+    @discardableResult
+    static func drucken(_ bild: UIImage, modell: DruckerModell, band: Int, ip: String, serie: String = "",
+                        festerName: String = "") async throws -> BluetoothDrucker? {
         guard modell.passt(band: band) else { throw DruckFehler.bandZuBreit(band, modell) }
         #if canImport(BRLMPrinterKit)
         guard let cg = bild.cgImage else { throw DruckFehler.druck("Etikett-Bild ist leer.") }
         let adresse = ip.trimmingCharacters(in: .whitespaces)
         if modell == .ptP750W, adresse.isEmpty { throw DruckFehler.keineAdresse }
         // Suche, Verbindung und Druck blockieren — nicht auf dem Hauptthread.
-        try await Task.detached(priority: .userInitiated) {
+        return try await Task.detached(priority: .userInitiated) { () throws -> BluetoothDrucker? in
             let kanal: BRLMChannel
+            var benutzt: BluetoothDrucker?
             switch modell {
             case .ptP710BT:
-                // Gewählter Drucker (Seriennummer aus den Einstellungen), sonst der erste verbundene
+                // Fester Drucker (Seriennummer aus den Einstellungen) — nur der; ohne festen Drucker der erste verbundene
                 let verbunden = EAAccessoryManager.shared().connectedAccessories.filter(DruckDienst.istBrotherPT)
-                guard let zubehoer = verbunden.first(where: { $0.serialNumber == serie }) ?? verbunden.first else {
-                    throw DruckFehler.keinBluetoothDrucker
+                let zubehoer: EAAccessory
+                if !serie.isEmpty {
+                    guard let z = verbunden.first(where: { $0.serialNumber == serie }) else {
+                        throw DruckFehler.festerDruckerAus(festerName.isEmpty ? "PT-P710BT (\(serie))" : festerName)
+                    }
+                    zubehoer = z
+                } else {
+                    guard let z = verbunden.first else { throw DruckFehler.keinBluetoothDrucker }
+                    zubehoer = z
                 }
+                benutzt = BluetoothDrucker(name: zubehoer.name, serie: zubehoer.serialNumber)
                 kanal = BRLMChannel(bluetoothSerialNumber: zubehoer.serialNumber)
             case .ptP750W:
                 kanal = BRLMChannel(wifiIPAddress: adresse)
@@ -135,6 +152,7 @@ enum DruckDienst {
             einstellungen.autoCut = true
             let fehler = treiber.printImage(with: cg, settings: einstellungen)
             guard fehler.code == .noError else { throw DruckFehler.druck(DruckDienst.druckText(fehler)) }
+            return benutzt
         }.value
         #else
         throw DruckFehler.bausteinFehlt

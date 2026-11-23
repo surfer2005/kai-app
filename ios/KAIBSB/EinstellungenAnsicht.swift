@@ -8,6 +8,7 @@ struct EinstellungenAnsicht: View {
     @AppStorage("laenge") private var laenge = 40
     @AppStorage("druckerIP") private var druckerIP = ""
     @AppStorage("druckerSerie") private var druckerSerie = ""
+    @AppStorage("druckerName") private var druckerName = ""
 
     @State private var angemeldet: Bool?
     @State private var gekoppelt: [BluetoothDrucker] = []
@@ -63,14 +64,21 @@ struct EinstellungenAnsicht: View {
                         ForEach(DruckerModell.allCases) { m in Text("\(m.name) · \(m.verbindung)").tag(m.rawValue) }
                     }
                     .pickerStyle(.inline)
-                    if modell == .ptP710BT {
+                    if modell == .ptP710BT && !druckerSerie.isEmpty {
+                        // Fester Drucker (nach dem ersten Druck gemerkt) — die App druckt nur auf ihn
+                        let verbunden = gekoppelt.contains { $0.serie == druckerSerie }
+                        Label(druckerName.isEmpty ? "PT-P710BT (\(druckerSerie))" : druckerName, systemImage: "printer.fill")
+                        Text(verbunden ? "Fester Drucker · verbunden" : "Fester Drucker · nicht verbunden — einschalten, das iPhone verbindet ihn von selbst")
+                            .font(.footnote).foregroundStyle(verbunden ? Farbe.gruenText : Farbe.textLeise)
+                        Button("Anderen Drucker wählen") { druckerSerie = ""; druckerName = "" }
+                    } else if modell == .ptP710BT {
                         if gekoppelt.isEmpty {
                             Text("Kein PT-P710BT verbunden. Drucker einschalten und auf „Drucker suchen“ tippen.")
                                 .font(.footnote).foregroundStyle(Farbe.textLeise)
                         } else {
                             // Mehrere verbundene Drucker: antippen wählt, mit welchem gedruckt wird
                             ForEach(gekoppelt) { d in
-                                Button { druckerSerie = d.serie } label: {
+                                Button { druckerSerie = d.serie; druckerName = "\(d.name) (\(d.serie))" } label: {
                                     HStack {
                                         Label("\(d.name) (\(d.serie))", systemImage: "printer")
                                         Spacer()
