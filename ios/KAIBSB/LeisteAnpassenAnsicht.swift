@@ -65,7 +65,7 @@ struct LeisteAnpassenAnsicht: View {
                 Button("Vorgabe wiederherstellen") { app.leisteSetzen(nil) }
                     .disabled(app.leistenWahl == nil)
             } footer: {
-                Text("Welche Bereiche es für dich gibt, legt KAI über deine Rechte fest. Vorgabe: die ersten drei in der Reihenfolge Dienstanweisung, Meldungen, Störmeldedienst bzw. Asset Manager, Scannen, Informationen, Schiffstatus, KI-Chat — wer den Störmeldedienst lesen darf, hat ihn statt des Asset Managers unten.")
+                Text("Welche Bereiche es für dich gibt, legt KAI über deine Rechte fest. Vorgabe: Dienstanweisung, Meldungen, Bordbuch — fehlt dir eines davon, rücken die nächsten Bereiche nach.")
             }
         }
         .navigationTitle("Leiste anpassen")

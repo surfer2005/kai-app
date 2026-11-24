@@ -23,7 +23,6 @@ enum StartZiel: Equatable {
         switch text {
         case "dienstanweisung", "da": .bereich(.dienstanweisung)
         case "meldungen": .bereich(.meldungen)
-        case "stoermelde", "stoermeldedienst": .bereich(.stoermeldedienst)
         case "asset": .bereich(.assetManager)
         case "scan": .bereich(.scannen)
         case "info": .bereich(.informationen)
@@ -63,7 +62,7 @@ final class AppZustand: ObservableObject {
     @Published private(set) var rechte: [String: String]?
     /// Eigene Wahl der Leiste (Mehr → Leiste anpassen), nil = Vorgabe. Auf dem Gerät gemerkt.
     @Published private(set) var leistenWahl: [Bereich]?
-    /// Je Bereich mit KAI-Ansicht eine eigene Seite (Dienstanweisung, Meldungen, Störmeldedienst, Asset Manager, Schiffstatus, KI-Chat).
+    /// Je Bereich mit KAI-Ansicht eine eigene Seite (Dienstanweisung, Meldungen, Asset Manager, Schiffstatus, KI-Chat, Bordbuch).
     @Published private(set) var seiten: [Bereich: WebSteuerung] = [:]
     /// Reiter „Start“: die KAI-Startseite (#home, in der App der Start der App, AppStart.vue) bzw. ohne Anmeldung die Anmeldeseite.
     /// Wird gleich geladen: über sie liest die App die Anmeldung, auch für Scannen und Drucken.

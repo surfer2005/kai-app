@@ -29,14 +29,13 @@ WARTE=6 foto 04-mehr-it -umgebung test -rechte dienstanweisung,asset_manager,sch
 WARTE=6 foto 05-mehr-alle-rechte -umgebung test -rechte alle -reiter mehr
 WARTE=6 foto 06-leiste-anpassen -umgebung test -rechte alle -reiter leiste
 WARTE=15 foto 07-meldungen-kai-test -umgebung test -rechte alle -reiter meldungen
-WARTE=15 foto 08-stoermeldedienst-kai-test -umgebung test -rechte alle -reiter stoermelde
 WARTE=15 foto 09-schiffstatus-unter-mehr-kai-test -umgebung test -rechte alle -reiter schiffstatus
 WARTE=15 foto 10-dienstanweisung-kai-test -umgebung test -rechte dienstanweisung,meldungen,schiffstatus -reiter dienstanweisung
 foto 11-informationen -umgebung test -rechte dienstanweisung,meldungen -reiter info
 foto 12-scannen-unter-mehr -umgebung test -rechte alle -reiter scan
 WARTE=15 foto 13-benachrichtigungen-kai-test -umgebung test -rechte alle -reiter benachrichtigungen
-# Bordbuch (nur lesen) steht unter „Mehr“ — ohne Anmeldung zeigt die KAI-Seite die Anmeldeseite
-WARTE=15 foto 18-bordbuch-unter-mehr-kai-test -umgebung test -rechte alle -reiter bordbuch
+# Bordbuch (nur lesen), in der Vorgabe der Leiste — ohne Anmeldung zeigt die KAI-Seite die Anmeldeseite
+WARTE=15 foto 18-bordbuch-kai-test -umgebung test -rechte alle -reiter bordbuch
 foto 14-etikett-muster -umgebung test -rechte alle -reiter druck -vorfuehrung
 WARTE=6 foto 15-einstellungen -umgebung test -reiter einstellungen
 xcrun simctl ui "$UDID" appearance dark

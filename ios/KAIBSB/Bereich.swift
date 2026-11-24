@@ -2,13 +2,12 @@ import Foundation
 
 /// Die Bereiche der App — jeder steht als Reiter unten in der Leiste oder unter „Mehr“.
 /// Reihenfolge wie im Klick-Dummy „KAI-App“ (BEREICHE: Dienstanweisung, Meldungen, Asset Manager, Scannen, Informationen,
-/// Schiffstatus, KI-Chat); der Störmeldedienst steht an der Stelle des Asset Managers (Peter 2026-11-23: „wichtig ist das
-/// Störmeldesystem, das könnte unten sein anstatt Asset Manager“). Ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23) — es gehört
-/// nicht in die Vorgabe der Leiste (`inVorgabe`), steht unter „Mehr“ und lässt sich über „Leiste anpassen“ nach unten holen.
+/// Schiffstatus, KI-Chat), ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23).
+/// Der Störmeldedienst ist vorerst NICHT in der App (Peter 2026-11-24: „Störmeldung muss so aussehen wie im Dummy festgelegt“) —
+/// er kommt wieder, sobald seine Ansicht nach dem Dummy gebaut ist.
 enum Bereich: String, CaseIterable, Identifiable, Codable {
     case dienstanweisung
     case meldungen
-    case stoermeldedienst
     case assetManager = "asset_manager"
     case scannen
     case informationen
@@ -23,7 +22,6 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "Dienstanweisung"
         case .meldungen: "Meldungen"
-        case .stoermeldedienst: "Störmeldedienst"
         case .assetManager: "Asset Manager"
         case .scannen: "Scannen"
         case .informationen: "Informationen"
@@ -47,7 +45,6 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "megaphone"
         case .meldungen: "exclamationmark.octagon"
-        case .stoermeldedienst: "exclamationmark.triangle"
         case .assetManager: "laptopcomputer.and.iphone"
         case .scannen: "qrcode.viewfinder"
         case .informationen: "info.circle"
@@ -63,7 +60,6 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "dienstanweisung"
         case .meldungen: "meldungen"
-        case .stoermeldedienst: "stoermeldedienst"
         case .assetManager, .scannen: "asset_manager"
         case .informationen: nil
         case .schiffstatus: "schiffstatus"
@@ -77,7 +73,6 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "dienstanweisung"
         case .meldungen: "meldungen"
-        case .stoermeldedienst: "stoermeldedienst"
         case .assetManager: "am_assets_neu"
         case .schiffstatus: "schiffstatus"
         case .kiChat: "ki_chat"
@@ -85,10 +80,6 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .scannen, .informationen: nil
         }
     }
-
-    /// Gehört der Bereich in die Vorgabe der Leiste? Das Bordbuch nicht (Peter 2026-11-23): es steht unter „Mehr“, bis die Person
-    /// es selbst über „Leiste anpassen“ nach unten holt.
-    var inVorgabe: Bool { self != .bordbuch }
 
     /// Darf die Person den Bereich sehen? Leserecht genügt (`read` oder `write`).
     func erlaubt(_ rechte: [String: String]) -> Bool {
@@ -113,12 +104,15 @@ struct Leiste: Equatable {
         Bereich.allCases.filter { $0.erlaubt(rechte) }
     }
 
-    /// Vorgabe: die ersten drei sichtbaren Bereiche in der Reihenfolge des Dummys. Wer den Störmeldedienst lesen darf, hat ihn
-    /// unten statt des Asset Managers — der steht dann unter „Mehr“. Bereiche mit `inVorgabe == false` (Bordbuch) nie.
+    /// Vorgabe der Leiste (Peter 2026-11-24): Dienstanweisung · Meldungen · Bordbuch in dieser Reihenfolge.
+    static let vorgabeReihenfolge: [Bereich] = [.dienstanweisung, .meldungen, .bordbuch]
+
+    /// Vorgabe: die Bereiche aus `vorgabeReihenfolge`, die die Person sehen darf; fehlt ihr ein Recht, rücken die nächsten sichtbaren
+    /// Bereiche in der festen Reihenfolge nach — höchstens drei.
     static func vorgabe(_ rechte: [String: String]) -> [Bereich] {
-        var kandidaten = sichtbar(rechte).filter(\.inVorgabe)
-        if kandidaten.contains(.stoermeldedienst) { kandidaten.removeAll { $0 == .assetManager } }
-        return Array(kandidaten.prefix(hoechstens))
+        let alle = sichtbar(rechte)
+        let zuerst = vorgabeReihenfolge.filter { alle.contains($0) }
+        return Array((zuerst + alle.filter { !zuerst.contains($0) }).prefix(hoechstens))
     }
 
     /// Leiste aus Rechten und gespeicherter Wahl (nil = keine eigene Wahl → Vorgabe). Ein Bereich, für den das Recht weggefallen

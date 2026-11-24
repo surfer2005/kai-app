@@ -91,7 +91,7 @@ struct KaiSeite: View {
     }
 }
 
-/// Reiter unten für einen Bereich mit KAI-Ansicht (Dienstanweisung, Meldungen, Störmeldedienst, Asset Manager, Schiffstatus,
+/// Reiter unten für einen Bereich mit KAI-Ansicht (Dienstanweisung, Meldungen, Asset Manager, Schiffstatus,
 /// KI-Chat): die KAI-Seite mit schmaler Kopfleiste. Was die Person dort sehen darf, prüft KAI selbst.
 struct KaiBereichReiter: View {
     @EnvironmentObject private var app: AppZustand
