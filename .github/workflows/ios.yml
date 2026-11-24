@@ -36,7 +36,7 @@ jobs:
           cd ios
           xcodebuild -project KAIBSB.xcodeproj -scheme KAIBSB -configuration Debug \
             -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath ../bau \
-            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee ../xcodebuild.log | grep -E "error:|warning: .*KAIBSB/|Test Case|Executed|Brother|\*\* (TEST|BUILD)" || true
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee ../xcodebuild.log | grep -E "error:|warning: .*KAIBSB/|Test Case|Executed|Brother|Verbindungsprobe|\*\* (TEST|BUILD)" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" ../xcodebuild.log
       - name: Bildschirmfotos
         run: ios/werkzeuge/bildschirmfotos.sh "${{ steps.sim.outputs.udid }}" bau/Build/Products/Debug-iphonesimulator/KAIBSB.app bildschirmfotos
