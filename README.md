@@ -23,14 +23,19 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   verschwindet der Bereich auch aus der Wahl. Alle übrigen Bereiche stehen unter „Mehr“ (dazu Benachrichtigungen und Mein Konto
   aus KAI, Etikett drucken, Einstellungen). Ohne Anmeldung gibt es nur „Start“ (mit der KAI-Anmeldeseite) und „Mehr“.
 - **Start** zeigt die KAI-Startseite in App-Darstellung (KAI: `AppStart.vue`): Begrüßung, Glocke und Kürzel, ein Hinweis, wenn
-  etwas ansteht, und die eigenen Bereiche mit Zahlen — ein Tipp wechselt in den Bereich.
+  etwas ansteht, und die eigenen Bereiche als Kacheln (zwei nebeneinander, Zahl oben rechts: Dienstanweisung „neu“, Asset Manager
+  „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Liste Zielanzeiger … Portale. Kein Schiff, keine
+  Schildchen (Peter 2026-11-24).
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
-- **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen**: je Bordbuch ein Kasten (Schiff, Datum, Gattung, Nummer, Stand),
-  ein Tipp klappt erst die Besatzung (Rang, Person, Dienst, Arbeits- und Kontrollzeit mit Ampel), dann die Kurse (Von → Nach,
-  Soll/Ist, Personen zu/ab/aktuell, km) auf (KAI: `BordbuchLesen.vue`). Erfasst wird am iPad quer oder am PC.
-- **Meldungen** und **Dienstanweisung** zeigen in der App nur die Liste mit dem Suchfeld (Meldungen mit „+ Meldung“) — ohne die
-  Reiter Symptomklassen/Symptome/Prioritäten bzw. „Verwalten“; die pflegt man am PC.
+- **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen** (KAI: `BordbuchLesen.vue`): öffnet mit dem Tagesüberblick (heute,
+  ‹ › blättert; je Betrieb Bordbücher, Schiffe und Gäste wie in der Beförderung, dazu „Gesamt“), Tipp auf den Betrieb → seine Bordbücher als
+  Kästen, Tipp → Leseseite: Kopf, Besatzung (Tipp zeigt Dienst, Arbeits- und Kontrollzeit mit Ampel), Fahrgäste als Summen, „Kurse · n“
+  zugeklappt. Das Suchfeld sucht über alle Bordbücher. Erfasst wird am iPad quer oder am PC.
+- **Meldungen** wie im Klick-Dummy (KAI: `MeldungenApp.vue`): „+ Meldung“, Auswahl Aktiv · Offen · In Bearbeitung · Behoben · Alle mit
+  Anzahl, je Meldung ein Kasten, Tipp → lesen, „+ Meldung“ → Schiff, Anlagenteil, „Was ist los?“ (ohne Netz in der Warteschlange). Ohne
+  Suchfeld, ohne Schiff als Filter, ohne die Reiter Symptomklassen/Symptome/Prioritäten. **Dienstanweisung** nur zum Lesen, ohne „Verwalten“.
+  Fotos an Meldungen gibt es in KAI noch nicht.
 - **Asset Manager** und **Informationen** (Zielanzeiger, GPS-Karte, Wetter, Telefonnummern, Schiffseinsatzplan,
   Dienstplan, Charter- und Cateringübersicht, Bereitschaftsplan, Portale): die KAI-Ansichten selbst, mit deinen Rechten.
   Telefonnummern lassen sich direkt anrufen.
