@@ -19,6 +19,8 @@ final class WebSteuerung: NSObject, ObservableObject {
     @Published private(set) var kannZurueck = false
     @Published private(set) var laedt = false
     @Published private(set) var fehler: String?
+    /// In welchem Rahmen (`KaiSeite`) die Seite gerade hängt — der zuletzt erschienene, s. `WebAnsicht`.
+    @Published var rahmen: UUID?
 
     let webView: WKWebView
     let umgebung: Umgebung

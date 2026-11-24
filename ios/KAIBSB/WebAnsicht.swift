@@ -3,8 +3,11 @@ import WebKit
 
 /// Zeigt die WKWebView einer `WebSteuerung`. Die WebView lebt in der Steuerung weiter; diese Ansicht hängt sie nur ein
 /// (in einen eigenen Rahmen, damit sie beim Wechsel zwischen Ansichten nicht aus dem falschen Rahmen gelöst wird).
+/// Dieselbe Seite kann in zwei Reitern offen sein (z. B. Informationen über „Mehr“ und über eine Kachel auf Start): sie hängt in dem
+/// Rahmen, der zuletzt erschienen ist (`steuerung.rahmen`).
 struct WebAnsicht: UIViewRepresentable {
     @ObservedObject var steuerung: WebSteuerung
+    let kennung: UUID
 
     func makeUIView(context: Context) -> UIView {
         let rahmen = UIView()
@@ -14,6 +17,7 @@ struct WebAnsicht: UIViewRepresentable {
     }
 
     func updateUIView(_ rahmen: UIView, context: Context) {
+        guard steuerung.rahmen == nil || steuerung.rahmen == kennung else { return }
         if steuerung.webView.superview !== rahmen { einhaengen(in: rahmen) }
     }
 
@@ -68,12 +72,13 @@ struct KaiSeite: View {
     let titel: String
     /// Ohne eigene Kopfleiste, wenn die Navigation des iPhones schon einen Kopf zeigt (Informationen).
     var mitKopf = true
+    @State private var kennung = UUID()
 
     var body: some View {
         VStack(spacing: 0) {
             if mitKopf { WebKopf(steuerung: steuerung, titel: titel) }
             ZStack {
-                WebAnsicht(steuerung: steuerung)
+                WebAnsicht(steuerung: steuerung, kennung: kennung)
                 if let fehler = steuerung.fehler {
                     VStack(spacing: 14) {
                         Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(Farbe.rotText)
@@ -87,7 +92,10 @@ struct KaiSeite: View {
             }
         }
         .background(Farbe.hintergrund)
-        .onAppear { steuerung.erstmalsLaden() }
+        .onAppear {
+            if steuerung.rahmen != kennung { steuerung.rahmen = kennung }
+            steuerung.erstmalsLaden()
+        }
     }
 }
 

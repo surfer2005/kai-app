@@ -50,15 +50,23 @@ struct HauptAnsicht: View {
     }
 }
 
-/// Reiter „Start“: die KAI-Startseite in App-Darstellung (Begrüßung, Hinweis, „In der App“ — AppStart.vue in KAI); ohne Anmeldung
+/// Reiter „Start“: die KAI-Startseite in App-Darstellung (Begrüßung, Hinweis, Kacheln — AppStart.vue in KAI); ohne Anmeldung
 /// zeigt KAI dort die Anmeldeseite. Ohne eigene Kopfleiste — Glocke und Kürzel stehen in der Seite.
+/// Eine Kachel, deren Bereich nicht unten steht, öffnet ihn hier in der Navigation des Reiters (zurück → „Start“, Peter 2026-11-24).
 struct StartReiter: View {
     @EnvironmentObject private var app: AppZustand
 
     var body: some View {
-        if let seite = app.anmeldung {
-            KaiSeite(steuerung: seite, titel: "Start", mitKopf: false).id(ObjectIdentifier(seite))
-                .onAppear { seite.startansichtZeigen() }
+        NavigationStack(path: $app.startPfad) {
+            Group {
+                if let seite = app.anmeldung {
+                    KaiSeite(steuerung: seite, titel: "Start", mitKopf: false).id(ObjectIdentifier(seite))
+                        .onAppear { seite.startansichtZeigen() }
+                }
+            }
+            .navigationTitle("Start")
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Bereich.self) { b in BereichInMehr(bereich: b) }
         }
     }
 }
@@ -76,7 +84,7 @@ struct BereichReiter: View {
     }
 }
 
-/// Ein Bereich unter „Mehr“ (in dessen Navigation).
+/// Ein Bereich unter „Mehr“ bzw. über eine Kachel auf Start geöffnet (in der Navigation des jeweiligen Reiters).
 struct BereichInMehr: View {
     @EnvironmentObject private var app: AppZustand
     let bereich: Bereich

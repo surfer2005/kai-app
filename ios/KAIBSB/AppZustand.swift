@@ -14,13 +14,19 @@ enum MehrZiel: Hashable {
     case benachrichtigungen, konto, drucken, einstellungen, leiste
 }
 
-/// Startargument `-reiter …` (Bildschirmfotos, Vorführung) → Bereich oder Seite unter „Mehr“.
+/// Startargument `-reiter …` (Bildschirmfotos, Vorführung) → Bereich, Seite unter „Mehr“ oder Bereich im Reiter „Start“
+/// (`start-info` = wie nach einem Tipp auf die Kachel „Informationen“).
 enum StartZiel: Equatable {
     case bereich(Bereich)
     case mehr([MehrZiel])
+    case start([Bereich])
 
     static func aus(_ text: String) -> StartZiel? {
-        switch text {
+        if text.hasPrefix("start-") {
+            guard case .some(.bereich(let b)) = aus(String(text.dropFirst("start-".count))) else { return nil }
+            return .start([b])
+        }
+        return switch text {
         case "dienstanweisung", "da": .bereich(.dienstanweisung)
         case "meldungen": .bereich(.meldungen)
         case "asset": .bereich(.assetManager)
@@ -41,6 +47,27 @@ enum StartZiel: Equatable {
     }
 }
 
+/// Wo man gerade steht: gewählter Reiter und der Weg in den Reitern „Start“ und „Mehr“ — rein, damit die Prüfungen nachrechnen
+/// können, wohin ein Tipp führt.
+struct Weg: Equatable {
+    var reiter: Reiter = .start
+    var startPfad: [Bereich] = []
+    var mehrPfad: [MehrZiel] = []
+
+    /// Kachel auf Start (Peter 2026-11-24): steht der Bereich unten in der Leiste, wechselt sie auf dessen Reiter; sonst öffnet
+    /// sie ihn in der Navigation des Reiters „Start“ — der Zurück-Pfeil führt dann zu „Start“, nicht zu „Mehr“. „Mehr“ bleibt unberührt.
+    func kachel(_ b: Bereich, unten: [Bereich]) -> Weg {
+        var neu = self
+        if unten.contains(b) {
+            neu.reiter = .bereich(b)
+        } else {
+            neu.reiter = .start
+            neu.startPfad = [b]
+        }
+        return neu
+    }
+}
+
 /// Das zuletzt in der App geöffnete Gerät — Grundlage für „Etikett drucken“.
 struct OffenesGeraet: Equatable {
     let id: Int
@@ -54,6 +81,8 @@ struct OffenesGeraet: Equatable {
 final class AppZustand: ObservableObject {
     @Published private(set) var umgebung: Umgebung?
     @Published var reiter: Reiter = .start
+    /// Weg im Reiter „Start“: ein Bereich, der über eine Kachel auf Start geöffnet wurde und nicht unten steht.
+    @Published var startPfad: [Bereich] = []
     @Published var mehrPfad: [MehrZiel] = []
     @Published var offenesGeraet: OffenesGeraet?
     /// Rechte der angemeldeten Person aus KAI (`/api/auth/me` → `permissions`), nil = nicht angemeldet bzw. unbekannt.
@@ -90,6 +119,7 @@ final class AppZustand: ObservableObject {
             switch ziel {
             case .bereich(let b): oeffne(b)
             case .mehr(let pfad): reiter = .mehr; mehrPfad = pfad
+            case .start(let pfad): reiter = .start; startPfad = pfad
             }
         }
         if Start.vorfuehrung { offenesGeraet = OffenesGeraet(id: 0, name: "MUSTER", vorfuehrung: true) }
@@ -136,14 +166,22 @@ final class AppZustand: ObservableObject {
         }
     }
 
-    /// Ist der Bereich gerade auf dem Bildschirm (unten gewählt oder unter „Mehr“ geöffnet)?
+    /// Kachel auf Start: Bereich unten → dessen Reiter, sonst im Reiter „Start“ öffnen (s. `Weg.kachel`).
+    func kachelGewaehlt(_ b: Bereich) {
+        let neu = Weg(reiter: reiter, startPfad: startPfad, mehrPfad: mehrPfad).kachel(b, unten: rechte == nil ? [] : leiste.unten)
+        if startPfad != neu.startPfad { startPfad = neu.startPfad }
+        if reiter != neu.reiter { reiter = neu.reiter }
+    }
+
+    /// Ist der Bereich gerade auf dem Bildschirm (unten gewählt, unter „Mehr“ oder im Reiter „Start“ geöffnet)?
     func zeigt(_ b: Bereich) -> Bool {
-        reiter == .bereich(b) || (reiter == .mehr && mehrPfad.last == .bereich(b))
+        reiter == .bereich(b) || (reiter == .mehr && mehrPfad.last == .bereich(b)) || (reiter == .start && startPfad.last == b)
     }
 
     /// Zur KAI-Anmeldung (Einstellungen → „In KAI anmelden“): der Reiter „Start“ zeigt ohne Anmeldung die Anmeldeseite.
     func zumAnmelden() {
         reiter = .start
+        startPfad = []
         mehrPfad = []
     }
 
@@ -158,6 +196,7 @@ final class AppZustand: ObservableObject {
     private func reiterPruefen() {
         if !reiterUnten.contains(reiter) { reiter = .start }
         if mehrPfad.contains(where: { if case .bereich(let b) = $0 { return !darf(b) } else { return false } }) { mehrPfad = [] }
+        if startPfad.contains(where: { !darf($0) }) { startPfad = [] }
     }
 
     // MARK: - Umgebung und KAI-Seiten
@@ -179,8 +218,9 @@ final class AppZustand: ObservableObject {
             seite.geraetGeoeffnet = { [weak self] id, name in self?.offenesGeraet = OffenesGeraet(id: id, name: name) }
             seite.anmeldungGeaendert = { [weak self] in self?.rechtePruefen() }
         }
-        // Start der App (AppStart.vue): Tipp auf einen Bereich → dorthin; Glocke → Mehr → Benachrichtigungen; Kürzel → Mehr
-        start.bereichGewaehlt = { [weak self] b in self?.oeffne(b) }
+        // Start der App (AppStart.vue): Kachel → Reiter des Bereichs bzw. im Reiter „Start“ öffnen; Glocke → Mehr → Benachrichtigungen;
+        // Kürzel → Mehr
+        start.bereichGewaehlt = { [weak self] b in self?.kachelGewaehlt(b) }
         start.mehrGewaehlt = { [weak self] ziel in
             guard let self else { return }
             switch ziel {
@@ -278,14 +318,15 @@ final class AppZustand: ObservableObject {
         // nur Seiten, die schon geladen waren (sonst lüden nach dem Abmelden alle KAI-Seiten auf einmal)
         for seite in alleSeiten where seite !== anmeldung && seite.webView.url != nil { seite.zurStartansicht() }
         if Start.rechte == nil { rechteSetzen(nil) }
+        startPfad = []
         mehrPfad = []
         if offenesGeraet?.vorfuehrung != true { offenesGeraet = nil }
     }
 
-    /// Gerät im Asset Manager öffnen und dorthin wechseln.
+    /// Gerät im Asset Manager öffnen und dorthin wechseln — aus Scannen, das über Start geöffnet wurde, im Reiter „Start“.
     func geraetOeffnen(_ id: Int, name: String? = nil) {
         offenesGeraet = OffenesGeraet(id: id, name: name)
-        oeffne(.assetManager)
+        if reiter == .start, !startPfad.isEmpty { kachelGewaehlt(.assetManager) } else { oeffne(.assetManager) }
         assetManager?.geraetOeffnen(id)
     }
 }

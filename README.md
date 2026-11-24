@@ -25,7 +25,9 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
 - **Start** zeigt die KAI-Startseite in App-Darstellung (KAI: `AppStart.vue`): Begrüßung, Glocke und Kürzel, ein Hinweis, wenn
   etwas ansteht, und die eigenen Bereiche als Kacheln (zwei nebeneinander, Zahl oben rechts: Dienstanweisung „neu“, Asset Manager
   „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Liste Zielanzeiger … Portale. Kein Schiff, keine
-  Schildchen (Peter 2026-11-24).
+  Schildchen (Peter 2026-11-24). Steht der Bereich unten in der Leiste, wechselt die Kachel auf dessen Reiter; sonst öffnet sie ihn
+  im Reiter „Start“ selbst — der Zurück-Pfeil oben links führt dann zu „Start“, nicht zu „Mehr“ (Peter 2026-11-24). Was über „Mehr“
+  geöffnet wird, führt wie bisher zu „Mehr“ zurück.
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen** (KAI: `BordbuchLesen.vue`): öffnet mit dem Tagesüberblick (heute,
@@ -97,7 +99,8 @@ Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl), 
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
-`-reiter dienstanweisung|meldungen|asset|scan|info|schiffstatus|ki|bordbuch|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`,
+`-reiter dienstanweisung|meldungen|asset|scan|info|schiffstatus|ki|bordbuch|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`
+(`start-info`, `start-asset` … = Bereich im Reiter „Start“ wie nach einem Tipp auf seine Kachel),
 `-rechte alle` bzw. `-rechte dienstanweisung,meldungen,…` (Reiter ohne Anmeldung vorführen; KAI-Seiten zeigen dann die Anmeldeseite),
 `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
 

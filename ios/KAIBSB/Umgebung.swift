@@ -104,7 +104,8 @@ enum Start {
     /// Gespeicherte Wahl vergessen → Einrichtung wie beim ersten Start.
     static var zuruecksetzen: Bool { schalter("zuruecksetzen") }
     /// Welcher Reiter beim Start offen ist: dienstanweisung, meldungen, asset, scan, info, schiffstatus, ki, bordbuch
-    /// (steht der Bereich nicht unten, öffnet er sich unter „Mehr“), mehr, benachrichtigungen, konto, druck, einstellungen, leiste.
+    /// (steht der Bereich nicht unten, öffnet er sich unter „Mehr“), mehr, benachrichtigungen, konto, druck, einstellungen, leiste;
+    /// `start-<Bereich>` (z. B. start-info) öffnet den Bereich im Reiter „Start“ wie ein Tipp auf seine Kachel.
     static var reiter: String? { wert("reiter") }
     /// Vorführung/Bildschirmfotos ohne Anmeldung: Rechte für die Reiter vorgeben, statt sie aus KAI zu lesen —
     /// `alle` oder eine Liste der KAI-Rechte, z. B. `dienstanweisung,meldungen,schiffstatus` (jeweils Leserecht).

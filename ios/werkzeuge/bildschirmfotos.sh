@@ -36,6 +36,8 @@ foto 12-scannen-unter-mehr -umgebung test -rechte alle -reiter scan
 WARTE=15 foto 13-benachrichtigungen-kai-test -umgebung test -rechte alle -reiter benachrichtigungen
 # Bordbuch (nur lesen), in der Vorgabe der Leiste — ohne Anmeldung zeigt die KAI-Seite die Anmeldeseite
 WARTE=15 foto 18-bordbuch-kai-test -umgebung test -rechte alle -reiter bordbuch
+# Kachel auf Start, deren Bereich nicht unten steht (Peter 2026-11-24): öffnet im Reiter „Start“, zurück → „Start“ (nicht „Mehr“)
+foto 19-informationen-ueber-start -umgebung test -rechte dienstanweisung,meldungen,bordbuch -reiter start-info
 foto 14-etikett-muster -umgebung test -rechte alle -reiter druck -vorfuehrung
 WARTE=6 foto 15-einstellungen -umgebung test -reiter einstellungen
 xcrun simctl ui "$UDID" appearance dark
