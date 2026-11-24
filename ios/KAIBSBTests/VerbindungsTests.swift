@@ -182,6 +182,17 @@ func pruefFenster() throws -> UIWindow {
     return fenster
 }
 
+/// Merkt sich, ob eine Seite fertig geladen hat oder woran sie gescheitert ist (z. B. App Transport Security).
+@MainActor
+final class LadeBeobachter: NSObject, WKNavigationDelegate {
+    var fertig = false
+    var fehler: String?
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { fertig = true }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { fehler = Self.text(error) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { fehler = Self.text(error) }
+    nonisolated static func text(_ e: Error) -> String { let n = e as NSError; return "\(n.domain) \(n.code): \(n.localizedDescription)" }
+}
+
 /// Eine Seite, wie die App sie nutzt: sichtbar laden, abrufen, wieder ausblenden (anderer Reiter, Bereich darüber geöffnet).
 struct SeitenMessung: CustomStringConvertible {
     let n: Int
@@ -189,9 +200,11 @@ struct SeitenMessung: CustomStringConvertible {
     var stromOffen = false
     var abrufAngekommen = false
     var offeneStroeme = 0
+    var fehler: String?
     var description: String {
         "Seite \(n): geladen \(seiteGeladen ? "ja" : "NEIN"), Ereignisstrom \(stromOffen ? "offen" : "nicht offen"), "
             + "Abruf \(abrufAngekommen ? "angekommen" : "NICHT angekommen"), offene Ströme am Server \(offeneStroeme)"
+            + (fehler.map { " — Ladefehler: \($0)" } ?? "")
     }
 }
 
@@ -200,43 +213,74 @@ final class VerbindungsTests: XCTestCase {
     /// So viele Seiten öffnet man in der App schnell: Start, drei Reiter unten, Informationen, Asset Manager, Schiffstatus,
     /// Störmeldedienst, Liegeplatz … (Peter am 24.11. zwischen 10:48 und 10:56: acht).
     let anzahl = 9
+    /// Fristen großzügig: im Simulator der CI braucht der erste Web-/Netzwerkprozess bis zu 15 s zum Starten (Lauf 45373228670).
+    let fristSeite: TimeInterval = 20
 
-    /// Basisadresse des Prüfservers, die WebKit lädt: zuerst `localhost`, sonst `127.0.0.1`.
+    /// Basisadresse des Prüfservers, die WebKit lädt: zuerst `localhost`, sonst `127.0.0.1`. Prüft vorher, ob der Server selbst
+    /// antwortet (URLSession), damit ein Fehlschlag sagt, woran es liegt.
     private func basisAdresse(_ server: PruefServer, _ fenster: UIWindow) throws -> String {
+        final class Kasten: @unchecked Sendable { var text: String? }
+        let direkt = Kasten()
+        URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:\(server.port)/abruf?tag=urlsession")!) { _, antwort, fehler in
+            let t = fehler.map { LadeBeobachter.text($0) } ?? "Status \((antwort as? HTTPURLResponse)?.statusCode ?? 0)"
+            DispatchQueue.main.async { direkt.text = t }
+        }.resume()
+        _ = warten(15) { direkt.text != nil }
+        print("Verbindungsprobe: Prüfserver auf Port \(server.port), direkt (URLSession): \(direkt.text ?? "keine Antwort")")
+        var gruende: [String] = []
         for host in ["localhost", "127.0.0.1"] {
             let probe = WKWebView(frame: fenster.bounds, configuration: WebSteuerung.konfiguration())
+            let beobachter = LadeBeobachter()
+            probe.navigationDelegate = beobachter
             fenster.addSubview(probe)
             let n = "probe-\(host)"
             probe.load(URLRequest(url: URL(string: "http://\(host):\(server.port)/seite?ohne=1&n=\(n)")!))
-            let da = warten(5) { server.seiteDa(n) }
+            _ = warten(45) { server.seiteDa(n) || beobachter.fehler != nil }
             probe.removeFromSuperview()
-            if da { return "http://\(host):\(server.port)" }
+            let ok = server.seiteDa(n)
+            print("Verbindungsprobe: WebKit über \(host): \(ok ? "erreichbar" : "nicht erreichbar — \(beobachter.fehler ?? "Zeitüberschreitung")")")
+            if ok { return "http://\(host):\(server.port)" }
+            gruende.append("\(host): \(beobachter.fehler ?? "Zeitüberschreitung")")
         }
-        throw NSError(domain: "Verbindungsprobe", code: 1, userInfo: [NSLocalizedDescriptionKey: "Prüfserver im Simulator nicht erreichbar (weder localhost noch 127.0.0.1)"])
+        throw NSError(domain: "Verbindungsprobe", code: 1, userInfo: [NSLocalizedDescriptionKey: "Prüfserver im Simulator nicht erreichbar (\(gruende.joined(separator: "; ")))"])
     }
 
     /// Lädt `anzahl` Seiten nacheinander sichtbar, ruft in jeder ab und blendet sie wieder aus; danach eine weitere, die sichtbar bleibt.
-    private func messen(ereignisstroeme: Bool, server: PruefServer, fenster: UIWindow, basis: String, seiten: inout [WKWebView]) -> [SeitenMessung] {
+    /// `abbrechenNach`: nach so vielen Seiten in Folge ohne Abruf aufhören (Gegenprobe — der Engpass ist dann gezeigt).
+    private func messen(ereignisstroeme: Bool, server: PruefServer, fenster: UIWindow, basis: String, seiten: inout [WKWebView],
+                        beobachter: inout [LadeBeobachter], abbrechenNach: Int = .max) -> [SeitenMessung] {
         var zeilen: [SeitenMessung] = []
+        var ohneAbruf = 0
+        let art = ereignisstroeme ? "mit" : "OHNE"
         for k in 1...(anzahl + 1) {
             let w = WKWebView(frame: fenster.bounds, configuration: WebSteuerung.konfiguration(ereignisstroeme: ereignisstroeme))
+            let b = LadeBeobachter()
+            w.navigationDelegate = b
             seiten.append(w)
+            beobachter.append(b)
             fenster.addSubview(w)
             var m = SeitenMessung(n: k)
             w.load(URLRequest(url: URL(string: "\(basis)/seite?n=\(k)")!))
-            m.seiteGeladen = warten(4) { server.seiteDa("\(k)") }
-            m.stromOffen = warten(3) { server.stromOffen("\(k)") }
+            _ = warten(fristSeite) { server.seiteDa("\(k)") || b.fehler != nil }
+            m.seiteGeladen = server.seiteDa("\(k)")
+            if m.seiteGeladen { m.stromOffen = warten(10) { server.stromOffen("\(k)") } }
+            _ = warten(5) { b.fertig || b.fehler != nil }
+            m.fehler = b.fehler
             let tag = "\(ereignisstroeme ? "mit" : "ohne")-\(k)"
-            _ = warten(2) { !w.isLoading }
             w.evaluateJavaScript("window.abruf && window.abruf('\(tag)')", completionHandler: nil)
-            m.abrufAngekommen = warten(3) { server.abrufDa(tag) }
+            m.abrufAngekommen = warten(6) { server.abrufDa(tag) }
             if k <= anzahl {
                 w.removeFromSuperview()   // anderer Reiter / Bereich darüber: die Seite ist nicht mehr zu sehen
-                if ereignisstroeme { _ = warten(3) { !server.stromOffen("\(k)") } } else { _ = warten(0.5) { false } }
+                if ereignisstroeme { _ = warten(8) { !server.stromOffen("\(k)") } } else { _ = warten(1) { false } }
             }
             m.offeneStroeme = server.offeneStroeme
             zeilen.append(m)
-            print("Verbindungsprobe (\(ereignisstroeme ? "mit" : "OHNE") Skript der App): \(m)")
+            print("Verbindungsprobe (\(art) Skript der App): \(m)")
+            ohneAbruf = m.abrufAngekommen ? 0 : ohneAbruf + 1
+            if ohneAbruf >= abbrechenNach {
+                print("Verbindungsprobe (\(art) Skript der App): \(ohneAbruf) Seiten in Folge ohne Abruf — Messung beendet.")
+                break
+            }
         }
         return zeilen
     }
@@ -248,43 +292,46 @@ final class VerbindungsTests: XCTestCase {
         try server.starten()
         let fenster = try pruefFenster()
         var seiten: [WKWebView] = []
+        var beobachter: [LadeBeobachter] = []
         defer {
             for w in seiten { w.stopLoading(); w.removeFromSuperview() }
             server.stoppen()
             fenster.isHidden = true
         }
         let basis = try basisAdresse(server, fenster)
-        let zeilen = messen(ereignisstroeme: true, server: server, fenster: fenster, basis: basis, seiten: &seiten)
+        let zeilen = messen(ereignisstroeme: true, server: server, fenster: fenster, basis: basis, seiten: &seiten, beobachter: &beobachter)
         for m in zeilen {
             XCTAssertTrue(m.seiteGeladen, "\(m)")
             XCTAssertTrue(m.abrufAngekommen, "\(m)")
             XCTAssertTrue(m.stromOffen, "solange die Seite zu sehen ist, ist ihr Strom offen — \(m)")
         }
         // nur die sichtbare Seite hält einen Strom
-        XCTAssertTrue(warten(3) { server.offeneStroeme == 1 }, "offene Ströme: \(server.offeneStroeme)")
+        XCTAssertTrue(warten(10) { server.offeneStroeme == 1 }, "offene Ströme: \(server.offeneStroeme)")
         // Seite 1 wieder zeigen (zurück in den Reiter): ihr Strom kommt wieder, Abrufe gehen durch
         let vorher = server.stromAnfragen("1")
         fenster.addSubview(seiten[0])
-        XCTAssertTrue(warten(5) { server.stromAnfragen("1") > vorher && server.stromOffen("1") }, "Strom von Seite 1 nicht neu verbunden")
+        XCTAssertTrue(warten(15) { server.stromAnfragen("1") > vorher && server.stromOffen("1") }, "Strom von Seite 1 nicht neu verbunden")
         seiten[0].evaluateJavaScript("window.abruf('mit-wieder-1')", completionHandler: nil)
-        XCTAssertTrue(warten(3) { server.abrufDa("mit-wieder-1") })
-        print("Verbindungsprobe (mit Skript der App): Seite 1 wieder sichtbar → Strom neu verbunden, Abruf angekommen")
+        XCTAssertTrue(warten(6) { server.abrufDa("mit-wieder-1") })
+        print("Verbindungsprobe (mit Skript der App): Seite 1 wieder sichtbar → Strom neu verbunden, Abruf angekommen; offene Ströme \(server.offeneStroeme)")
     }
 
-    /// Gegenprobe: dieselben Seiten OHNE das Skript der App — so verhielt sich die App bis 0.1.0 (Lauf 45341663507).
+    /// Gegenprobe: dieselben Seiten OHNE das Skript der App — so verhielt sich die App bis Lauf 45341663507.
     /// Hält nur fest, was passiert (WebKit kann seine Grenzen ändern), und schreibt es ins Protokoll des Laufs.
     func testGegenprobeOhneSkriptDerApp() throws {
         let server = try PruefServer()
         try server.starten()
         let fenster = try pruefFenster()
         var seiten: [WKWebView] = []
+        var beobachter: [LadeBeobachter] = []
         defer {
             for w in seiten { w.stopLoading(); w.removeFromSuperview() }
             server.stoppen()
             fenster.isHidden = true
         }
         let basis = try basisAdresse(server, fenster)
-        let zeilen = messen(ereignisstroeme: false, server: server, fenster: fenster, basis: basis, seiten: &seiten)
+        let zeilen = messen(ereignisstroeme: false, server: server, fenster: fenster, basis: basis, seiten: &seiten,
+                            beobachter: &beobachter, abbrechenNach: 2)
         if let erste = zeilen.first(where: { !$0.abrufAngekommen }) {
             print("Verbindungsprobe (OHNE Skript der App): ab Seite \(erste.n) kam der Abruf nicht mehr an — \(erste.offeneStroeme) Ereignisströme hielten die Verbindungen.")
         } else {
