@@ -48,6 +48,7 @@ final class ReiterTests: XCTestCase {
         XCTAssertEqual(StartZiel.aus("asset"), .bereich(.assetManager))
         XCTAssertEqual(StartZiel.aus("meldungen"), .bereich(.meldungen))
         XCTAssertEqual(StartZiel.aus("dienstanweisung"), .bereich(.dienstanweisung))
+        XCTAssertEqual(StartZiel.aus("liegeplatz"), .bereich(.liegeplatz))
         XCTAssertEqual(StartZiel.aus("schiffstatus"), .bereich(.schiffstatus))
         XCTAssertEqual(StartZiel.aus("bordbuch"), .bereich(.bordbuch))
         XCTAssertEqual(StartZiel.aus("stoermeldedienst"), .bereich(.stoermeldedienst))
@@ -98,19 +99,50 @@ final class ReiterTests: XCTestCase {
     /// Die Bereiche tragen die Namen, Rechte und Ansichten aus KAI (client/src/app-modus.js, APP_BEREICHE).
     func testBereicheWieInKai() {
         // Störmeldedienst wieder in der App (Peter 2026-11-24: Ansicht nach dem Klick-Dummy „Anzeiger“ gebaut)
-        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat", "bordbuch"])
-        XCTAssertEqual(Bereich.stoermeldedienst.recht, "stoermeldedienst")
+        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat", "bordbuch", "liegeplatz", "meine_dienste"])
+        XCTAssertEqual(Bereich.stoermeldedienst.rechte, ["stoermeldedienst"])
         XCTAssertEqual(Bereich.stoermeldedienst.kaiAnsicht, "stoermeldedienst")
         XCTAssertEqual(Bereich.stoermeldedienst.name, "Störmeldedienst")
         XCTAssertEqual(Bereich.assetManager.kaiAnsicht, "am_assets_neu")
         XCTAssertNil(Bereich.scannen.kaiAnsicht)
-        XCTAssertEqual(Bereich.scannen.recht, "asset_manager")
-        XCTAssertNil(Bereich.informationen.recht)
+        XCTAssertEqual(Bereich.scannen.rechte, ["asset_manager"])
+        XCTAssertTrue(Bereich.informationen.rechte.isEmpty)
         XCTAssertEqual(Bereich.assetManager.leistenName, "Assets")
         // Bordbuch zum Lesen (Peter 2026-11-23): Recht und KAI-Ansicht „bordbuch“
-        XCTAssertEqual(Bereich.bordbuch.recht, "bordbuch")
+        XCTAssertEqual(Bereich.bordbuch.rechte, ["bordbuch"])
         XCTAssertEqual(Bereich.bordbuch.kaiAnsicht, "bordbuch")
         XCTAssertEqual(Bereich.bordbuch.name, "Bordbuch")
+        // Liegeplatz zum Lesen (Peter 2026-11-24): KAI-Ansicht lp_app, lesbar mit EINER der Liegeplatz-Ansichten (LP_VIEWS)
+        XCTAssertEqual(Bereich.liegeplatz.rechte, ["karte", "kunden", "warteliste", "vertraege", "buchungen", "stammdaten"])
+        XCTAssertEqual(Bereich.liegeplatz.kaiAnsicht, "lp_app")
+        XCTAssertEqual(Bereich.liegeplatz.name, "Liegeplatz")
+    }
+
+    /// Liegeplatz: eines der Liegeplatz-Rechte genügt; „none“ zählt nicht.
+    func testLiegeplatzMitEinemDerRechte() {
+        XCTAssertTrue(Bereich.liegeplatz.erlaubt(["kunden": "read"]))
+        XCTAssertTrue(Bereich.liegeplatz.erlaubt(["karte": "write", "kunden": "none"]))
+        XCTAssertFalse(Bereich.liegeplatz.erlaubt(["karte": "none", "meldungen": "write"]))
+        XCTAssertFalse(Bereich.liegeplatz.erlaubt([:]))
+    }
+
+    /// „Meine Dienste“ (Testbetrieb, Peter 2026-11-24): KAI-Ansicht meine_dienste, für jeden Angemeldeten, NUR als Kachel auf Start —
+    /// nie in der Leiste unten, nie unter „Mehr“; die Kachel öffnet ihn im Reiter „Start“ (zurück → Start).
+    func testMeineDiensteNurAufStart() {
+        XCTAssertEqual(Bereich.meineDienste.kaiAnsicht, "meine_dienste")
+        XCTAssertTrue(Bereich.meineDienste.rechte.isEmpty)
+        XCTAssertEqual(Bereich.meineDienste.name, "Meine Dienste")
+        XCTAssertTrue(Bereich.meineDienste.nurAufStart)
+        XCTAssertFalse(Bereich.allCases.filter { $0 != .meineDienste }.contains { $0.nurAufStart })
+        let alle = Dictionary(uniqueKeysWithValues: ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "schiffstatus", "ki_chat", "bordbuch"].map { ($0, "write") })
+        XCTAssertFalse(Leiste.sichtbar(alle).contains(.meineDienste))
+        let l = Leiste.berechnen(rechte: alle, wahl: [.meineDienste, .meldungen])
+        XCTAssertEqual(l.unten, [.meldungen])
+        XCTAssertFalse(l.mehr.contains(.meineDienste))
+        XCTAssertEqual(Leiste.berechnen(rechte: [:], wahl: nil).unten, [.informationen])
+        let weg = Weg(reiter: .start, startPfad: [], mehrPfad: []).kachel(.meineDienste, unten: [.dienstanweisung, .meldungen, .bordbuch])
+        XCTAssertEqual(weg, Weg(reiter: .start, startPfad: [.meineDienste], mehrPfad: []))
+        XCTAssertEqual(StartZiel.aus("start-dienste"), .start([.meineDienste]))
     }
 
     /// So liefert KAI /api/auth/me (Ausschnitt) — nur die Texteinträge zählen.
@@ -172,6 +204,13 @@ final class LeisteTests: XCTestCase {
         let it = Leiste.berechnen(rechte: lesen("dienstanweisung", "asset_manager", "schiffstatus", "ki_chat"), wahl: nil)
         XCTAssertEqual(it.unten, [.dienstanweisung, .assetManager, .scannen])
         XCTAssertEqual(it.mehr, [.informationen, .schiffstatus, .kiChat])
+    }
+
+    /// Der Liegeplatz steht unter „Mehr“ (und als Kachel auf Start) — die Vorgabe der Leiste bleibt (Peter 2026-11-24).
+    func testLiegeplatzUnterMehr() {
+        let l = Leiste.berechnen(rechte: lesen("dienstanweisung", "meldungen", "bordbuch", "karte"), wahl: nil)
+        XCTAssertEqual(l.unten, [.dienstanweisung, .meldungen, .bordbuch])
+        XCTAssertEqual(l.mehr, [.informationen, .liegeplatz])
     }
 
     /// Eigene Wahl gilt in ihrer Reihenfolge — auch der Asset Manager, wenn ihn jemand ausdrücklich gewählt hat.

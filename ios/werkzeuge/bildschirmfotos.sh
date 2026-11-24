@@ -43,4 +43,5 @@ WARTE=6 foto 15-einstellungen -umgebung test -reiter einstellungen
 xcrun simctl ui "$UDID" appearance dark
 WARTE=6 foto 16-mehr-dunkel -umgebung test -rechte alle -reiter mehr
 WARTE=15 foto 17-asset-manager-dunkel -umgebung test -rechte dienstanweisung,asset_manager -reiter asset
+foto 20-informationen-dunkel -umgebung test -rechte dienstanweisung,meldungen,bordbuch -reiter start-info
 xcrun simctl ui "$UDID" appearance light

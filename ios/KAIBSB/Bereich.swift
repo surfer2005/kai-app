@@ -5,6 +5,9 @@ import Foundation
 /// Informationen, Schiffstatus, KI-Chat), ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23).
 /// Der Störmeldedienst zeigt in KAI den Ablauf „Störmeldung auslösen“ (Handy-Ansicht des Klick-Dummys „Anzeiger“, Peter 2026-11-24);
 /// er steht unter „Mehr“ bzw. als Kachel auf Start — die Vorgabe der Leiste bleibt Dienstanweisung · Meldungen · Bordbuch.
+/// Ganz hinten der Liegeplatz zum Lesen (Peter 2026-11-24), ebenfalls unter „Mehr“ bzw. als Kachel auf Start.
+/// „Meine Dienste“ (Testbetrieb, Peter 2026-11-24) gibt es NUR als Kachel auf Start (AppStart.vue): kein Reiter unten, nicht unter „Mehr“
+/// (`nurAufStart`) — die Kachel öffnet ihn im Reiter „Start“, zurück führt zu Start.
 enum Bereich: String, CaseIterable, Identifiable, Codable {
     case dienstanweisung
     case meldungen
@@ -15,8 +18,13 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
     case schiffstatus
     case kiChat = "ki_chat"
     case bordbuch
+    case liegeplatz
+    case meineDienste = "meine_dienste"
 
     var id: String { rawValue }
+
+    /// Die Liegeplatz-Ansichten in KAI (LP_VIEWS in server/src/perm.js, im Client app-modus.js) — eine davon genügt.
+    static let liegeplatzRechte = ["karte", "kunden", "warteliste", "vertraege", "buchungen", "stammdaten"]
 
     /// Name wie in KAI.
     var name: String {
@@ -30,6 +38,8 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .schiffstatus: "Schiffstatus"
         case .kiChat: "KI-Chat"
         case .bordbuch: "Bordbuch"
+        case .liegeplatz: "Liegeplatz"
+        case .meineDienste: "Meine Dienste"
         }
     }
 
@@ -42,7 +52,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
     }
 
     /// SF Symbol — entspricht dem Material-Symbol im Dummy (campaign, report, warning, devices, qr_code_scanner, info, directions_boat,
-    /// forum, menu_book).
+    /// forum, menu_book; beim Liegeplatz in KAI anchor, hier das Segelboot).
     var symbol: String {
         switch self {
         case .dienstanweisung: "megaphone"
@@ -54,21 +64,24 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .schiffstatus: "ferry"
         case .kiChat: "bubble.left.and.bubble.right"
         case .bordbuch: "book.closed"
+        case .liegeplatz: "sailboat"
+        case .meineDienste: "calendar"
         }
     }
 
-    /// Das Recht in KAI, das zum Lesen nötig ist (Schlüssel aus `/api/auth/me` → `permissions`).
-    /// Informationen stehen allen offen — jeder Punkt des Infocenters prüft in KAI selbst.
-    var recht: String? {
+    /// Die Rechte in KAI, von denen EINES zum Lesen genügt (Schlüssel aus `/api/auth/me` → `permissions`); leer = für alle.
+    /// Informationen stehen allen offen — jeder Punkt des Infocenters prüft in KAI selbst. Liegeplatz: eine der Liegeplatz-Ansichten.
+    var rechte: [String] {
         switch self {
-        case .dienstanweisung: "dienstanweisung"
-        case .meldungen: "meldungen"
-        case .stoermeldedienst: "stoermeldedienst"
-        case .assetManager, .scannen: "asset_manager"
-        case .informationen: nil
-        case .schiffstatus: "schiffstatus"
-        case .kiChat: "ki_chat"
-        case .bordbuch: "bordbuch"
+        case .dienstanweisung: ["dienstanweisung"]
+        case .meldungen: ["meldungen"]
+        case .stoermeldedienst: ["stoermeldedienst"]
+        case .assetManager, .scannen: ["asset_manager"]
+        case .informationen, .meineDienste: []   // Meine Dienste: jeder Angemeldete, KAI zeigt nur die eigene Person
+        case .schiffstatus: ["schiffstatus"]
+        case .kiChat: ["ki_chat"]
+        case .bordbuch: ["bordbuch"]
+        case .liegeplatz: Bereich.liegeplatzRechte
         }
     }
 
@@ -82,15 +95,23 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         case .schiffstatus: "schiffstatus"
         case .kiChat: "ki_chat"
         case .bordbuch: "bordbuch"   // KAI zeigt es in der App nur zum Lesen (BordbuchLesen.vue)
+        case .liegeplatz: "lp_app"   // KAI zeigt ihn in der App nur zum Lesen (LiegeplatzApp.vue)
+        case .meineDienste: "meine_dienste"
         case .scannen, .informationen: nil
         }
     }
 
-    /// Darf die Person den Bereich sehen? Leserecht genügt (`read` oder `write`).
+    /// Nur über die Kachel auf Start erreichbar — weder in der Leiste unten noch unter „Mehr“.
+    var nurAufStart: Bool { self == .meineDienste }
+
+    /// Darf die Person den Bereich sehen? Leserecht (`read` oder `write`) auf EINES der Rechte genügt.
     func erlaubt(_ rechte: [String: String]) -> Bool {
-        guard let recht else { return true }
-        let stufe = rechte[recht] ?? "none"
-        return stufe == "read" || stufe == "write"
+        let noetig = self.rechte
+        guard !noetig.isEmpty else { return true }
+        return noetig.contains { r in
+            let stufe = rechte[r] ?? "none"
+            return stufe == "read" || stufe == "write"
+        }
     }
 }
 
@@ -104,9 +125,9 @@ struct Leiste: Equatable {
 
     static let hoechstens = 3
 
-    /// Alle Bereiche, die die Person nach ihren Rechten sehen darf — in der festen Reihenfolge.
+    /// Alle Bereiche, die die Person nach ihren Rechten sehen darf — in der festen Reihenfolge (ohne die Bereiche nur auf Start).
     static func sichtbar(_ rechte: [String: String]) -> [Bereich] {
-        Bereich.allCases.filter { $0.erlaubt(rechte) }
+        Bereich.allCases.filter { !$0.nurAufStart && $0.erlaubt(rechte) }
     }
 
     /// Vorgabe der Leiste (Peter 2026-11-24): Dienstanweisung · Meldungen · Bordbuch in dieser Reihenfolge.

@@ -21,7 +21,7 @@ struct InfoPunkt: Identifiable, Hashable {
     ]
 }
 
-/// Reiter „Informationen“ (unten): die Punkte des Infocenters als Liste, jeder öffnet die KAI-Ansicht.
+/// Reiter „Informationen“ (unten): die Punkte des Infocenters als Kacheln, jede öffnet die KAI-Ansicht.
 /// Was du in KAI nicht sehen darfst, zeigt KAI auch hier nicht.
 struct InformationenReiter: View {
     var body: some View {
@@ -29,28 +29,67 @@ struct InformationenReiter: View {
     }
 }
 
-/// Die Liste der Infocenter-Punkte — unten als eigener Reiter oder unter „Mehr“ (dann in dessen Navigation).
+/// Die Punkte des Infocenters als Kacheln, zwei nebeneinander — wie die Kacheln auf Start (KAI: `zk zk-kai klick`, Peter 2026-11-24:
+/// „Einheitlichkeit in einer App“; die frühere Liste steht bei cbd2e0f2). Unten als eigener Reiter, unter „Mehr“ oder über die
+/// Kachel auf Start — überall dieselbe Ansicht in der Navigation des jeweiligen Reiters.
 struct InformationenListe: View {
     @EnvironmentObject private var app: AppZustand
+    private let spalten = [GridItem(.flexible(), spacing: 9), GridItem(.flexible(), spacing: 9)]
 
     var body: some View {
-        List {
-            Section {
-                ForEach(InfoPunkt.alle) { punkt in
-                    NavigationLink { InfoSeite(punkt: punkt) } label: {
-                        Label { Text(punkt.name) } icon: { Image(systemName: punkt.symbol).foregroundStyle(Farbe.primaer) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                LazyVGrid(columns: spalten, alignment: .leading, spacing: 9) {
+                    ForEach(InfoPunkt.alle) { punkt in
+                        NavigationLink { InfoSeite(punkt: punkt) } label: { Kachel(symbol: punkt.symbol, name: punkt.name) }
+                            .buttonStyle(.plain)
                     }
                 }
-            } footer: {
                 Text("Die Ansichten kommen direkt aus KAI — mit deiner Anmeldung und deinen Rechten.")
+                    .font(.footnote)
+                    .foregroundStyle(Farbe.textLeise)
+                    .padding(.horizontal, 4)
             }
+            .padding(16)
         }
+        .background(Farbe.hintergrund)
         .navigationTitle("Informationen")
         .toolbar {
             if let u = app.umgebung {
                 ToolbarItem(placement: .topBarTrailing) { UmgebungsKennzeichen(umgebung: u) }
             }
         }
+    }
+}
+
+/// Eine Kachel wie in KAI (`client/src/styles/zustandskachel.css`, `.zk.zk-kai`): Fläche, 1 px Rand, Radius 10, grüner Streifen
+/// links 5 px; Symbol oben links (grün), darunter der Name.
+struct Kachel: View {
+    let symbol: String
+    let name: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(Farbe.primaer)
+                .accessibilityHidden(true)
+            Text(name)
+                .font(.body.weight(.bold))
+                .foregroundStyle(Farbe.text)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+        .padding(.vertical, 9)
+        .padding(.leading, 5 + 11)
+        .padding(.trailing, 11)
+        .background { RoundedRectangle(cornerRadius: 10).fill(Farbe.flaeche) }
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Farbe.rand, lineWidth: 1) }
+        .overlay(alignment: .leading) { Farbe.primaer.frame(width: 5) }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .shadow(color: Color.black.opacity(0.06), radius: 1, x: 0, y: 1)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 

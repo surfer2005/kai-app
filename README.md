@@ -13,7 +13,8 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
 - **Leiste unten** (Klick-Dummy „KAI-App“): links fest **Start**, dazwischen bis zu **drei Bereiche**, rechts fest **Mehr**.
-  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat · Bordbuch.
+  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat · Bordbuch ·
+  Liegeplatz.
   Welche jemand sieht, kommt aus KAI: nach der Anmeldung liest die App die Rechte (`GET /api/auth/me`, Leserecht genügt;
   Informationen für alle, Scannen mit dem Recht Asset Manager). Vorgabe (Peter 2026-11-24): **Dienstanweisung · Meldungen ·
   Bordbuch** — fehlt jemandem das Recht für einen davon, rücken die nächsten sichtbaren Bereiche in dieser Reihenfolge nach.
@@ -24,10 +25,18 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   aus KAI, Etikett drucken, Einstellungen). Ohne Anmeldung gibt es nur „Start“ (mit der KAI-Anmeldeseite) und „Mehr“.
 - **Start** zeigt die KAI-Startseite in App-Darstellung (KAI: `AppStart.vue`): Begrüßung, Glocke und Kürzel, ein Hinweis, wenn
   etwas ansteht, und die eigenen Bereiche als Kacheln (zwei nebeneinander, Zahl oben rechts: Dienstanweisung „neu“, Asset Manager
-  „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Liste Zielanzeiger … Portale. Kein Schiff, keine
+  „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Kacheln Zielanzeiger … Portale (zwei nebeneinander
+  wie auf Start, unter Start und unter „Mehr“ gleich; die frühere Liste steht bei cbd2e0f2). Kein Schiff, keine
   Schildchen (Peter 2026-11-24). Steht der Bereich unten in der Leiste, wechselt die Kachel auf dessen Reiter; sonst öffnet sie ihn
   im Reiter „Start“ selbst — der Zurück-Pfeil oben links führt dann zu „Start“, nicht zu „Mehr“ (Peter 2026-11-24). Was über „Mehr“
   geöffnet wird, führt wie bisher zu „Mehr“ zurück.
+- **Liegeplatz** (Leserecht auf einen Bereich der Liegeplatzverwaltung) — **nur lesen** (KAI: `LiegeplatzApp.vue`, Ansicht `lp_app`,
+  Peter 2026-11-24): unter „Mehr“ und als Kachel auf Start. Suchfeld (Platznummer, Name, Boot, Kennzeichen — die Suche der Belegung),
+  Häfen als Kästen mit Stegen/Plätzen und frei · belegt · gesperrt heute (dieselbe Regel wie die Belegung, `belegung.js`), Stege,
+  Platz-Kacheln wie in der Belegung (`PlatzKachel.vue`), Platz → Angaben aus der Liegeplatz-Akte, Telefon des Mieters zum Anrufen.
+- **Meine Dienste** (Testbetrieb, Peter 2026-11-24): eigene Kachel auf Start über „In der App“ mit dem nächsten Eintrag aus den
+  Dienstplänen (KAI: `MeineDiensteView.vue`, `/api/meine-dienste`). Bereich `meine_dienste` in `Bereich.swift` mit `nurAufStart` —
+  nie in der Leiste, nie unter „Mehr“; die Kachel öffnet ihn im Reiter „Start“, zurück führt zu Start.
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen** (KAI: `BordbuchLesen.vue`): öffnet mit dem Tagesüberblick (heute,
@@ -99,8 +108,8 @@ Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl), 
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
-`-reiter dienstanweisung|meldungen|stoermeldedienst|asset|scan|info|schiffstatus|ki|bordbuch|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`
-(`start-info`, `start-asset` … = Bereich im Reiter „Start“ wie nach einem Tipp auf seine Kachel),
+`-reiter dienstanweisung|meldungen|stoermeldedienst|asset|scan|info|schiffstatus|ki|bordbuch|liegeplatz|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`
+(`start-info`, `start-asset`, `start-dienste` … = Bereich im Reiter „Start“ wie nach einem Tipp auf seine Kachel),
 `-rechte alle` bzw. `-rechte dienstanweisung,meldungen,…` (Reiter ohne Anmeldung vorführen; KAI-Seiten zeigen dann die Anmeldeseite),
 `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
 
