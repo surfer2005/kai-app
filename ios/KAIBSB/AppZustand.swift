@@ -122,7 +122,9 @@ final class AppZustand: ObservableObject {
             switch ziel {
             case .bereich(let b): oeffne(b)
             case .mehr(let pfad): reiter = .mehr; mehrPfad = pfad
-            case .start(let pfad): reiter = .start; startPfad = pfad
+            case .start(let pfad):
+                // wie ein Tipp auf die Kachel in AppStart.vue: derselbe Weg wie die Nachricht der Seite (bereichGewaehlt → kachelGewaehlt)
+                if pfad.count == 1, let tipp = anmeldung?.bereichGewaehlt { tipp(pfad[0]) } else { reiter = .start; startPfad = pfad }
             }
         }
         if Start.vorfuehrung { offenesGeraet = OffenesGeraet(id: 0, name: "MUSTER", vorfuehrung: true) }

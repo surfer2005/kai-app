@@ -14,13 +14,12 @@ enum AnmeldeStand: Equatable {
 
 /// Eine KAI-Seite in der App (je Bereich eine). Alle teilen sich den Website-Speicher des iPhones:
 /// die Anmeldung (Token `lpv_token` im localStorage, wie im Browser) gilt in allen und bleibt nach dem Schließen erhalten.
+/// Sie teilen sich damit auch die Verbindungen des iPhones zu KAI (s. `ereignisstromSkript`).
 @MainActor
 final class WebSteuerung: NSObject, ObservableObject {
     @Published private(set) var kannZurueck = false
     @Published private(set) var laedt = false
     @Published private(set) var fehler: String?
-    /// In welchem Rahmen (`KaiSeite`) die Seite gerade hängt — der zuletzt erschienene, s. `WebAnsicht`.
-    @Published var rahmen: UUID?
 
     let webView: WKWebView
     let umgebung: Umgebung
@@ -43,16 +42,8 @@ final class WebSteuerung: NSObject, ObservableObject {
     init(umgebung: Umgebung, startAnsicht: String) {
         self.umgebung = umgebung
         self.startAnsicht = startAnsicht
-        let konfiguration = WKWebViewConfiguration()
-        konfiguration.websiteDataStore = .default()
-        konfiguration.applicationNameForUserAgent = "KAI-BSB-App/\(AppInfo.version)"
-        konfiguration.allowsInlineMediaPlayback = true
-        // KI-Chat „Vorlesen“: KAI spielt die Antwort ab, sobald der Ton fertig ist (nach dem Tippen, aber nicht
-        // unmittelbar darin) — deshalb Wiedergabe ohne eigenen Tipp erlauben.
-        konfiguration.mediaTypesRequiringUserActionForPlayback = []
-        let inhalt = WKUserContentController()
-        inhalt.addUserScript(WKUserScript(source: Self.beobachterSkript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        konfiguration.userContentController = inhalt
+        let konfiguration = Self.konfiguration()
+        let inhalt = konfiguration.userContentController
         webView = WKWebView(frame: .zero, configuration: konfiguration)
         webView.allowsBackForwardNavigationGestures = true
         webView.isOpaque = false
@@ -70,6 +61,25 @@ final class WebSteuerung: NSObject, ObservableObject {
                 Task { @MainActor in self?.laedt = ansicht.isLoading }
             },
         ]
+    }
+
+    /// Einstellungen jeder KAI-Seite — eine Stelle, damit die Prüfungen dieselben Skripte laden wie die App.
+    /// `ereignisstroeme: false` nur für die Gegenprobe in den Prüfungen (KAI-Seite ohne das Skript der App).
+    static func konfiguration(ereignisstroeme: Bool = true) -> WKWebViewConfiguration {
+        let konfiguration = WKWebViewConfiguration()
+        konfiguration.websiteDataStore = .default()
+        konfiguration.applicationNameForUserAgent = "KAI-BSB-App/\(AppInfo.version)"
+        konfiguration.allowsInlineMediaPlayback = true
+        // KI-Chat „Vorlesen“: KAI spielt die Antwort ab, sobald der Ton fertig ist (nach dem Tippen, aber nicht
+        // unmittelbar darin) — deshalb Wiedergabe ohne eigenen Tipp erlauben.
+        konfiguration.mediaTypesRequiringUserActionForPlayback = []
+        let inhalt = WKUserContentController()
+        inhalt.addUserScript(WKUserScript(source: beobachterSkript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if ereignisstroeme {
+            inhalt.addUserScript(WKUserScript(source: ereignisstromSkript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        konfiguration.userContentController = inhalt
+        return konfiguration
     }
 
     /// Lädt die Startansicht beim ersten Anzeigen (nicht schon beim Start der App).
@@ -216,6 +226,75 @@ final class WebSteuerung: NSObject, ObservableObject {
         }
         return antwort;
       };
+    })();
+    """
+
+    /// Ereignisströme (`EventSource`) nur in der Seite, die gerade zu sehen ist (Peter 2026-11-24: Störmeldedienst blieb bei
+    /// „Lädt …“, KI-Chat leer). Jede angemeldete KAI-Seite öffnet für den Mitarbeiter-Chat einen Ereignisstrom
+    /// (`ChatWidget.vue` → `GET /api/chat/stream`), der nie endet. KAI antwortet nur über HTTP/1.1, und alle Seiten der App teilen
+    /// sich EINEN Netzwerkspeicher und damit dieselben wenigen Verbindungen zum Server. Mit jeder geöffneten Seite (Start, die
+    /// Reiter unten, Bereiche über Start und „Mehr“) war eine Verbindung mehr dauerhaft belegt; danach blieb jede weitere Anfrage
+    /// still in der Warteschlange des iPhones — „Lädt …“ ohne Fehler, beim Server kam nichts an (Protokoll Test 24.11.).
+    /// Dieses Skript ersetzt `EventSource` durch eine Hülle mit derselben Bedienung: die echte Verbindung besteht nur, solange
+    /// die Seite sichtbar ist (`document.visibilityState`); verschwindet sie (anderer Reiter, Bereich darüber geöffnet, App im
+    /// Hintergrund), wird sie geschlossen, und kommt die Seite zurück, neu geöffnet. KAI selbst bleibt unverändert — der Chat holt
+    /// Ungelesenes ohnehin alle 30 s nach.
+    static let ereignisstromSkript = """
+    (function () {
+      var Echt = window.EventSource;
+      if (!Echt || Echt.__kaiApp) return;
+      var alle = [];
+      var sichtbar = function () { return document.visibilityState !== 'hidden'; };
+      var STANDARD = { open: 1, message: 1, error: 1 };
+      class KaiEreignisstrom extends EventTarget {
+        constructor(url, optionen) {
+          super();
+          this.url = new URL(url, location.href).href;
+          this.withCredentials = !!(optionen && optionen.withCredentials);
+          this.onopen = null; this.onmessage = null; this.onerror = null;
+          this._optionen = optionen; this._echt = null; this._zu = false;
+          this._arten = new Set(['open', 'message', 'error']);
+          alle.push(this);
+          if (sichtbar()) this._verbinden();
+        }
+        get readyState() { return this._zu ? 2 : (this._echt ? this._echt.readyState : 0); }
+        addEventListener(art, f, o) {
+          super.addEventListener(art, f, o);
+          if (!this._arten.has(art)) { this._arten.add(art); if (this._echt) this._weiterleiten(this._echt, art); }
+        }
+        close() {
+          this._zu = true; this._trennen();
+          var i = alle.indexOf(this); if (i >= 0) alle.splice(i, 1);
+        }
+        _verbinden() {
+          if (this._zu || this._echt) return;
+          var e = new Echt(this.url, this._optionen);
+          this._echt = e;
+          var self = this;
+          this._arten.forEach(function (art) { self._weiterleiten(e, art); });
+        }
+        _trennen() { var e = this._echt; this._echt = null; if (e) e.close(); }
+        _weiterleiten(e, art) {
+          var self = this;
+          e.addEventListener(art, function (ev) {
+            if (self._echt !== e) return;
+            var kopie = (typeof MessageEvent === 'function' && ev instanceof MessageEvent)
+              ? new MessageEvent(art, { data: ev.data, origin: ev.origin, lastEventId: ev.lastEventId })
+              : new Event(art);
+            var h = STANDARD[art] ? self['on' + art] : null;
+            if (typeof h === 'function') { try { h.call(self, kopie); } catch (x) { setTimeout(function () { throw x; }); } }
+            self.dispatchEvent(kopie);
+          });
+        }
+      }
+      [['CONNECTING', 0], ['OPEN', 1], ['CLOSED', 2]].forEach(function (k) {
+        KaiEreignisstrom[k[0]] = k[1]; KaiEreignisstrom.prototype[k[0]] = k[1];
+      });
+      KaiEreignisstrom.__kaiApp = true;
+      window.EventSource = KaiEreignisstrom;
+      document.addEventListener('visibilitychange', function () {
+        alle.slice().forEach(function (q) { if (sichtbar()) q._verbinden(); else q._trennen(); });
+      });
     })();
     """
 }

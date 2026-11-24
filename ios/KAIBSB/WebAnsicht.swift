@@ -1,41 +1,61 @@
 import SwiftUI
 import WebKit
 
-/// Zeigt die WKWebView einer `WebSteuerung`. Die WebView lebt in der Steuerung weiter; diese Ansicht hängt sie nur ein
-/// (in einen eigenen Rahmen, damit sie beim Wechsel zwischen Ansichten nicht aus dem falschen Rahmen gelöst wird).
-/// Dieselbe Seite kann in zwei Reitern offen sein (z. B. Informationen über „Mehr“ und über eine Kachel auf Start): sie hängt in dem
-/// Rahmen, der zuletzt erschienen ist (`steuerung.rahmen`).
-struct WebAnsicht: UIViewRepresentable {
-    @ObservedObject var steuerung: WebSteuerung
-    let kennung: UUID
+/// Rahmen für die WKWebView einer `WebSteuerung`. Die WebView lebt in der Steuerung weiter; der Rahmen hängt sie nur ein.
+/// Dieselbe Seite kann an mehreren Orten vorkommen (z. B. Informationen unten als Reiter, unter „Mehr“ und über die Kachel auf
+/// Start; ein Bereich über „Mehr“ und über Start) — eine UIView hat aber genau EINEN Platz. Sie hängt deshalb immer in dem Rahmen,
+/// der zuletzt ins Fenster gekommen ist, also in dem, der gerade auf dem Bildschirm steht (UIKit nimmt Reiter, die nicht gewählt
+/// sind, und Seiten, über die eine andere geschoben wurde, aus dem Fenster). Ein Rahmen außerhalb des Fensters nimmt sie nie an
+/// sich, und ein Rahmen, der abgebaut wird, gibt sie nur frei, wenn sie noch bei ihm hängt.
+final class WebRahmen: UIView {
+    weak var steuerung: WebSteuerung?
 
-    func makeUIView(context: Context) -> UIView {
-        let rahmen = UIView()
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { einhaengen() }
+    }
+
+    /// Hängt die Seite hier ein — nur wenn dieser Rahmen im Fenster ist.
+    func einhaengen() {
+        guard window != nil, let web = steuerung?.webView, web.superview !== self else { return }
+        web.removeFromSuperview()
+        web.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(web)
+        NSLayoutConstraint.activate([
+            web.leadingAnchor.constraint(equalTo: leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: trailingAnchor),
+            web.topAnchor.constraint(equalTo: topAnchor),
+            web.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    /// Gibt die Seite frei, wenn sie noch hier hängt (sonst hängt sie schon im sichtbaren Rahmen und bleibt dort).
+    func freigeben() {
+        if let web = steuerung?.webView, web.superview === self { web.removeFromSuperview() }
+    }
+}
+
+/// Zeigt die WKWebView einer `WebSteuerung` in einem `WebRahmen`.
+struct WebAnsicht: UIViewRepresentable {
+    let steuerung: WebSteuerung
+
+    func makeUIView(context: Context) -> WebRahmen {
+        let rahmen = WebRahmen()
         rahmen.backgroundColor = UIColor(Farbe.hintergrund)
-        einhaengen(in: rahmen)
+        rahmen.steuerung = steuerung
+        rahmen.einhaengen()
         return rahmen
     }
 
-    func updateUIView(_ rahmen: UIView, context: Context) {
-        guard steuerung.rahmen == nil || steuerung.rahmen == kennung else { return }
-        if steuerung.webView.superview !== rahmen { einhaengen(in: rahmen) }
+    func updateUIView(_ rahmen: WebRahmen, context: Context) {
+        guard rahmen.steuerung !== steuerung else { return }
+        rahmen.freigeben()
+        rahmen.steuerung = steuerung
+        rahmen.einhaengen()
     }
 
-    static func dismantleUIView(_ rahmen: UIView, coordinator: ()) {
-        for ansicht in rahmen.subviews where ansicht is WKWebView { ansicht.removeFromSuperview() }
-    }
-
-    private func einhaengen(in rahmen: UIView) {
-        let web = steuerung.webView
-        web.removeFromSuperview()
-        web.translatesAutoresizingMaskIntoConstraints = false
-        rahmen.addSubview(web)
-        NSLayoutConstraint.activate([
-            web.leadingAnchor.constraint(equalTo: rahmen.leadingAnchor),
-            web.trailingAnchor.constraint(equalTo: rahmen.trailingAnchor),
-            web.topAnchor.constraint(equalTo: rahmen.topAnchor),
-            web.bottomAnchor.constraint(equalTo: rahmen.bottomAnchor),
-        ])
+    static func dismantleUIView(_ rahmen: WebRahmen, coordinator: ()) {
+        rahmen.freigeben()
     }
 }
 
@@ -72,13 +92,12 @@ struct KaiSeite: View {
     let titel: String
     /// Ohne eigene Kopfleiste, wenn die Navigation des iPhones schon einen Kopf zeigt (Informationen).
     var mitKopf = true
-    @State private var kennung = UUID()
 
     var body: some View {
         VStack(spacing: 0) {
             if mitKopf { WebKopf(steuerung: steuerung, titel: titel) }
             ZStack {
-                WebAnsicht(steuerung: steuerung, kennung: kennung)
+                WebAnsicht(steuerung: steuerung)
                 if let fehler = steuerung.fehler {
                     VStack(spacing: 14) {
                         Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(Farbe.rotText)
@@ -92,10 +111,7 @@ struct KaiSeite: View {
             }
         }
         .background(Farbe.hintergrund)
-        .onAppear {
-            if steuerung.rahmen != kennung { steuerung.rahmen = kennung }
-            steuerung.erstmalsLaden()
-        }
+        .onAppear { steuerung.erstmalsLaden() }
     }
 }
 

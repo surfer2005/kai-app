@@ -30,6 +30,13 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   Schildchen (Peter 2026-11-24). Steht der Bereich unten in der Leiste, wechselt die Kachel auf dessen Reiter; sonst öffnet sie ihn
   im Reiter „Start“ selbst — der Zurück-Pfeil oben links führt dann zu „Start“, nicht zu „Mehr“ (Peter 2026-11-24). Was über „Mehr“
   geöffnet wird, führt wie bisher zu „Mehr“ zurück.
+- **Verbindungen zu KAI** (Peter 2026-11-24: Störmeldedienst blieb bei „Lädt …“, KI-Chat leer): jede angemeldete KAI-Seite hält
+  für den Mitarbeiter-Chat einen Ereignisstrom offen (`/api/chat/stream`), KAI spricht nur HTTP/1.1, und alle Seiten der App teilen
+  sich die Verbindungen des iPhones zum Server. Mit jeder geöffneten Seite war eine Verbindung mehr dauerhaft belegt, danach blieben
+  Anfragen still in der Warteschlange. Die App ersetzt deshalb in jeder KAI-Seite `EventSource` durch eine Hülle
+  (`WebSteuerung.ereignisstromSkript`): der Strom ist nur offen, solange die Seite zu sehen ist. KAI selbst bleibt unverändert.
+  Eine KAI-Seite hängt außerdem immer nur im Ort, der gerade auf dem Bildschirm ist (`WebRahmen`), auch wenn derselbe Bereich
+  über Start und über „Mehr“ offen ist.
 - **Liegeplatz** (Leserecht auf einen Bereich der Liegeplatzverwaltung) — **nur lesen** (KAI: `LiegeplatzApp.vue`, Ansicht `lp_app`,
   Peter 2026-11-24): unter „Mehr“ und als Kachel auf Start. Suchfeld (Platznummer, Name, Boot, Kennzeichen — die Suche der Belegung),
   Häfen als Kästen mit Stegen/Plätzen und frei · belegt · gesperrt heute (dieselbe Regel wie die Belegung, `belegung.js`), Stege,
@@ -104,7 +111,8 @@ Nur im Simulator ausprobieren geht ohne Apple-ID und ohne Kabel: im Schritt 7 ei
 
 Bei jedem Hochladen auf `main` (`.github/workflows/ios.yml`): Druckcode gegen die Brother-Attrappe prüfen, Projekt aus
 `ios/project.yml` erzeugen (XcodeGen), bauen, Prüfungen (`ios/KAIBSBTests`: Umgebungs-Adressen, Erkennen von Etiketten und
-Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl), Bildschirmfotos im Simulator (`ios/werkzeuge/bildschirmfotos.sh`). Am Lauf
+Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl, eine KAI-Seite hängt nur im sichtbaren Ort,
+Verbindungsprobe mit einem HTTP/1.1-Prüfserver — Ergebnis je Seite im Protokoll unter „Verbindungsprobe“), Bildschirmfotos im Simulator (`ios/werkzeuge/bildschirmfotos.sh`). Am Lauf
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
