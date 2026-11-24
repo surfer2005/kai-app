@@ -29,6 +29,7 @@ enum StartZiel: Equatable {
         return switch text {
         case "dienstanweisung", "da": .bereich(.dienstanweisung)
         case "meldungen": .bereich(.meldungen)
+        case "stoermeldedienst", "stoer": .bereich(.stoermeldedienst)
         case "asset": .bereich(.assetManager)
         case "scan": .bereich(.scannen)
         case "info": .bereich(.informationen)

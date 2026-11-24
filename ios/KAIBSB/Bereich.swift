@@ -1,13 +1,14 @@
 import Foundation
 
 /// Die Bereiche der App — jeder steht als Reiter unten in der Leiste oder unter „Mehr“.
-/// Reihenfolge wie im Klick-Dummy „KAI-App“ (BEREICHE: Dienstanweisung, Meldungen, Asset Manager, Scannen, Informationen,
-/// Schiffstatus, KI-Chat), ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23).
-/// Der Störmeldedienst ist vorerst NICHT in der App (Peter 2026-11-24: „Störmeldung muss so aussehen wie im Dummy festgelegt“) —
-/// er kommt wieder, sobald seine Ansicht nach dem Dummy gebaut ist.
+/// Reihenfolge wie im Klick-Dummy „KAI-App“ (BEREICHE: Dienstanweisung, Meldungen, Störmeldedienst, Asset Manager, Scannen,
+/// Informationen, Schiffstatus, KI-Chat), ganz hinten das Bordbuch zum Lesen (Peter 2026-11-23).
+/// Der Störmeldedienst zeigt in KAI den Ablauf „Störmeldung auslösen“ (Handy-Ansicht des Klick-Dummys „Anzeiger“, Peter 2026-11-24);
+/// er steht unter „Mehr“ bzw. als Kachel auf Start — die Vorgabe der Leiste bleibt Dienstanweisung · Meldungen · Bordbuch.
 enum Bereich: String, CaseIterable, Identifiable, Codable {
     case dienstanweisung
     case meldungen
+    case stoermeldedienst
     case assetManager = "asset_manager"
     case scannen
     case informationen
@@ -22,6 +23,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "Dienstanweisung"
         case .meldungen: "Meldungen"
+        case .stoermeldedienst: "Störmeldedienst"
         case .assetManager: "Asset Manager"
         case .scannen: "Scannen"
         case .informationen: "Informationen"
@@ -39,12 +41,13 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// SF Symbol — entspricht dem Material-Symbol im Dummy (campaign, report, devices, qr_code_scanner, info, directions_boat, forum,
-    /// menu_book).
+    /// SF Symbol — entspricht dem Material-Symbol im Dummy (campaign, report, warning, devices, qr_code_scanner, info, directions_boat,
+    /// forum, menu_book).
     var symbol: String {
         switch self {
         case .dienstanweisung: "megaphone"
         case .meldungen: "exclamationmark.octagon"
+        case .stoermeldedienst: "exclamationmark.triangle"
         case .assetManager: "laptopcomputer.and.iphone"
         case .scannen: "qrcode.viewfinder"
         case .informationen: "info.circle"
@@ -60,6 +63,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "dienstanweisung"
         case .meldungen: "meldungen"
+        case .stoermeldedienst: "stoermeldedienst"
         case .assetManager, .scannen: "asset_manager"
         case .informationen: nil
         case .schiffstatus: "schiffstatus"
@@ -73,6 +77,7 @@ enum Bereich: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .dienstanweisung: "dienstanweisung"
         case .meldungen: "meldungen"
+        case .stoermeldedienst: "stoermeldedienst"   // in der App nur der Ablauf „Störmeldung auslösen“, ohne Reiter
         case .assetManager: "am_assets_neu"
         case .schiffstatus: "schiffstatus"
         case .kiChat: "ki_chat"

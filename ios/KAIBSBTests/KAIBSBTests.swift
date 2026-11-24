@@ -50,6 +50,8 @@ final class ReiterTests: XCTestCase {
         XCTAssertEqual(StartZiel.aus("dienstanweisung"), .bereich(.dienstanweisung))
         XCTAssertEqual(StartZiel.aus("schiffstatus"), .bereich(.schiffstatus))
         XCTAssertEqual(StartZiel.aus("bordbuch"), .bereich(.bordbuch))
+        XCTAssertEqual(StartZiel.aus("stoermeldedienst"), .bereich(.stoermeldedienst))
+        XCTAssertEqual(StartZiel.aus("start-stoer"), .start([.stoermeldedienst]))
         XCTAssertEqual(StartZiel.aus("druck"), .mehr([.drucken]))
         XCTAssertEqual(StartZiel.aus("einstellungen"), .mehr([.einstellungen]))
         XCTAssertEqual(StartZiel.aus("benachrichtigungen"), .mehr([.benachrichtigungen]))
@@ -69,7 +71,7 @@ final class ReiterTests: XCTestCase {
     func testKachelOhneReiterUntenBleibtImStart() {
         let unten: [Bereich] = [.dienstanweisung, .meldungen, .bordbuch]
         let vorher = Weg(reiter: .start, startPfad: [], mehrPfad: [.bereich(.schiffstatus)])
-        for b in [Bereich.informationen, .assetManager, .scannen, .schiffstatus, .kiChat] {
+        for b in [Bereich.informationen, .stoermeldedienst, .assetManager, .scannen, .schiffstatus, .kiChat] {
             let weg = vorher.kachel(b, unten: unten)
             XCTAssertEqual(weg.reiter, .start, "\(b)")
             XCTAssertEqual(weg.startPfad, [b], "\(b)")
@@ -95,8 +97,11 @@ final class ReiterTests: XCTestCase {
 
     /// Die Bereiche tragen die Namen, Rechte und Ansichten aus KAI (client/src/app-modus.js, APP_BEREICHE).
     func testBereicheWieInKai() {
-        // Störmeldedienst vorerst nicht in der App (Peter 2026-11-24: erst die Ansicht nach dem Dummy)
-        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat", "bordbuch"])
+        // Störmeldedienst wieder in der App (Peter 2026-11-24: Ansicht nach dem Klick-Dummy „Anzeiger“ gebaut)
+        XCTAssertEqual(Bereich.allCases.map(\.rawValue), ["dienstanweisung", "meldungen", "stoermeldedienst", "asset_manager", "scannen", "informationen", "schiffstatus", "ki_chat", "bordbuch"])
+        XCTAssertEqual(Bereich.stoermeldedienst.recht, "stoermeldedienst")
+        XCTAssertEqual(Bereich.stoermeldedienst.kaiAnsicht, "stoermeldedienst")
+        XCTAssertEqual(Bereich.stoermeldedienst.name, "Störmeldedienst")
         XCTAssertEqual(Bereich.assetManager.kaiAnsicht, "am_assets_neu")
         XCTAssertNil(Bereich.scannen.kaiAnsicht)
         XCTAssertEqual(Bereich.scannen.recht, "asset_manager")
@@ -211,8 +216,8 @@ final class LeisteTests: XCTestCase {
 
     func testSpeichertext() {
         XCTAssertEqual(Leiste.alsText([.schiffstatus, .assetManager]), "schiffstatus,asset_manager")
-        // gespeicherte Wahl mit dem Störmeldedienst (vorerst nicht in der App) bzw. Unbekanntem: fällt weg
-        XCTAssertEqual(Leiste.ausText("stoermeldedienst, asset_manager,unbekannt"), [.assetManager])
+        // gespeicherte Wahl mit dem Störmeldedienst bzw. Unbekanntem: Unbekanntes fällt weg
+        XCTAssertEqual(Leiste.ausText("stoermeldedienst, asset_manager,unbekannt"), [.stoermeldedienst, .assetManager])
         XCTAssertEqual(Leiste.ausText(""), [])
     }
 }

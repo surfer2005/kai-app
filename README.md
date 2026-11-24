@@ -13,12 +13,12 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
 - **Anmelden** auf der normalen KAI-Anmeldeseite in der App — Kennwort, zweiter Faktor und Microsoft-Anmeldung wie im
   Browser. Die App bleibt angemeldet (Speicher des iPhones, wie ein Browser).
 - **Leiste unten** (Klick-Dummy „KAI-App“): links fest **Start**, dazwischen bis zu **drei Bereiche**, rechts fest **Mehr**.
-  Bereiche: Dienstanweisung · Meldungen · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat · Bordbuch.
+  Bereiche: Dienstanweisung · Meldungen · Störmeldedienst · Asset Manager · Scannen · Informationen · Schiffstatus · KI-Chat · Bordbuch.
   Welche jemand sieht, kommt aus KAI: nach der Anmeldung liest die App die Rechte (`GET /api/auth/me`, Leserecht genügt;
   Informationen für alle, Scannen mit dem Recht Asset Manager). Vorgabe (Peter 2026-11-24): **Dienstanweisung · Meldungen ·
   Bordbuch** — fehlt jemandem das Recht für einen davon, rücken die nächsten sichtbaren Bereiche in dieser Reihenfolge nach.
-  Der **Störmeldedienst** ist vorerst nicht in der App (Peter 2026-11-24: „Störmeldung muss so aussehen wie im Dummy
-  festgelegt“) — er kommt wieder, sobald seine Ansicht nach dem Dummy gebaut ist. Unter **Mehr → Leiste anpassen** wählt jede Person selbst,
+  Der **Störmeldedienst** zeigt in KAI den Ablauf „Störmeldung auslösen“ in der Handy-Fassung des Klick-Dummys „Anzeiger“
+  (ohne Reiter, Peter 2026-11-24); er steht unter „Mehr“ und als Kachel auf Start, nicht in der Vorgabe der Leiste. Unter **Mehr → Leiste anpassen** wählt jede Person selbst,
   welche drei unten stehen und in welcher Reihenfolge (gemerkt auf dem iPhone, „Vorgabe wiederherstellen“); fällt ein Recht weg,
   verschwindet der Bereich auch aus der Wahl. Alle übrigen Bereiche stehen unter „Mehr“ (dazu Benachrichtigungen und Mein Konto
   aus KAI, Etikett drucken, Einstellungen). Ohne Anmeldung gibt es nur „Start“ (mit der KAI-Anmeldeseite) und „Mehr“.
@@ -99,7 +99,7 @@ Gerätenamen, Etikett-Maße je Bandbreite, Leiste je Rechten und eigener Wahl), 
 hängen **KAIBSB-Xcode** (Projekt zum Herunterladen) und **bildschirmfotos**.
 
 Startargumente für Bildschirmfotos: `-zuruecksetzen` (Einrichtung wie beim ersten Start), `-umgebung test|produktion|entwicklung`,
-`-reiter dienstanweisung|meldungen|asset|scan|info|schiffstatus|ki|bordbuch|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`
+`-reiter dienstanweisung|meldungen|stoermeldedienst|asset|scan|info|schiffstatus|ki|bordbuch|mehr|benachrichtigungen|konto|druck|einstellungen|leiste`
 (`start-info`, `start-asset` … = Bereich im Reiter „Start“ wie nach einem Tipp auf seine Kachel),
 `-rechte alle` bzw. `-rechte dienstanweisung,meldungen,…` (Reiter ohne Anmeldung vorführen; KAI-Seiten zeigen dann die Anmeldeseite),
 `-vorfuehrung` (Muster-Etikett „MUSTER“, ausdrücklich als Platzhalter gekennzeichnet).
