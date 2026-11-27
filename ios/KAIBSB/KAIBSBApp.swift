@@ -32,7 +32,12 @@ struct HauptAnsicht: View {
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        TabView(selection: $app.reiter) {
+        // Nochmal auf den aktiven Reiter tippen = zum Anfang des Bereichs (wie auf dem iPhone üblich, Peter 2026-11-27; ersetzt den
+        // Haus-Knopf). SwiftUI ruft den Setter auch beim erneuten Tippen auf denselben Reiter auf.
+        TabView(selection: Binding(get: { app.reiter }, set: { neu in
+            if neu == app.reiter { app.reiterNochmalGetippt(neu) }
+            app.reiter = neu
+        })) {
             StartReiter()
                 .tabItem { Label("Start", systemImage: "house") }
                 .tag(Reiter.start)

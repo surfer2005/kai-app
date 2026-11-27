@@ -124,14 +124,7 @@ struct InfoSeite: View {
         }
         .navigationTitle(punkt.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let seite = app.informationen {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { seite.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
-                        .accessibilityLabel("Neu laden")
-                }
-            }
-        }
+        // neu laden durch Herunterziehen (WebSteuerung), kein eigener Knopf (Peter 2026-11-27)
         .background(Farbe.hintergrund)
     }
 }

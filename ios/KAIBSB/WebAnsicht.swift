@@ -59,24 +59,19 @@ struct WebAnsicht: UIViewRepresentable {
     }
 }
 
-/// Schmale Kopfleiste über einer KAI-Seite: zurück, Name, Umgebung, Start, neu laden.
+/// Schmale Kopfleiste über einer KAI-Seite: nur Name und Umgebung (Peter 2026-11-27: Zurück, Haus und Neu laden taten sichtbar
+/// nichts — wie auf dem iPhone üblich: neu laden durch Herunterziehen, zum Anfang durch nochmaliges Tippen auf den Reiter unten,
+/// zurück über „← Zur Liste“ in KAI). Zurück ging nie: KAI trägt das Öffnen eines Datensatzes nicht in den Verlauf ein.
 struct WebKopf: View {
     @ObservedObject var steuerung: WebSteuerung
     let titel: String
 
     var body: some View {
         HStack(spacing: 10) {
-            Button { steuerung.zurueck() } label: { Image(systemName: "chevron.left") }
-                .disabled(!steuerung.kannZurueck)
-                .accessibilityLabel("Zurück")
             Text(titel).font(.headline).lineLimit(1)
             UmgebungsKennzeichen(umgebung: steuerung.umgebung)
             Spacer()
             if steuerung.laedt { ProgressView().controlSize(.small) }
-            Button { steuerung.zurStartansicht() } label: { Image(systemName: "house") }
-                .accessibilityLabel("Zur Startansicht")
-            Button { steuerung.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
-                .accessibilityLabel("Neu laden")
         }
         .font(.body)
         .padding(.horizontal, 14)
@@ -156,11 +151,6 @@ struct MehrKaiSeite: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if steuerung.laedt { ProgressView().controlSize(.small) }
-                    Button { steuerung.zurueck() } label: { Image(systemName: "chevron.backward.circle") }
-                        .disabled(!steuerung.kannZurueck)
-                        .accessibilityLabel("Zurück in der Seite")
-                    Button { steuerung.neuLaden() } label: { Image(systemName: "arrow.clockwise") }
-                        .accessibilityLabel("Neu laden")
                 }
             }
     }

@@ -53,6 +53,10 @@ final class WebSteuerung: NSObject, ObservableObject {
         inhalt.add(SchwacherBote(self), name: "kaiApp")
         webView.navigationDelegate = self
         webView.uiDelegate = self
+        // Neu laden durch Herunterziehen, wie auf dem iPhone üblich (Peter 2026-11-27, ersetzt den Knopf „Neu laden“)
+        let auffrischen = UIRefreshControl()
+        auffrischen.addTarget(self, action: #selector(herunterGezogen), for: .valueChanged)
+        webView.scrollView.refreshControl = auffrischen
         beobachter = [
             webView.observe(\.canGoBack, options: [.new]) { [weak self] ansicht, _ in
                 Task { @MainActor in self?.kannZurueck = ansicht.canGoBack }
@@ -108,6 +112,16 @@ final class WebSteuerung: NSObject, ObservableObject {
     }
 
     func zurueck() { if webView.canGoBack { webView.goBack() } }
+
+    @objc private func herunterGezogen() {
+        neuLaden()
+        // Rückfall: kommt keine Meldung „fertig“/„fehlgeschlagen“ (z. B. ohne Netz), den Kreisel nach 10 s trotzdem einziehen
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.auffrischenBeenden() }
+    }
+
+    private func auffrischenBeenden() {
+        if webView.scrollView.refreshControl?.isRefreshing == true { webView.scrollView.refreshControl?.endRefreshing() }
+    }
 
     /// Eine KAI-Ansicht über ihre Hash-Route zeigen (z. B. `zielanzeiger`).
     func zeigen(_ hash: String) {
@@ -315,6 +329,7 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        auffrischenBeenden()
         einmalFertig = true
         anmeldungGeaendert?()
     }
@@ -328,6 +343,7 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
     }
 
     private func fehlgeschlagen(_ error: Error) {
+        auffrischenBeenden()
         let e = error as NSError
         // abgebrochen (z. B. weil gleich die nächste Seite kam) bzw. an eine andere App übergeben
         if e.domain == NSURLErrorDomain, e.code == NSURLErrorCancelled { return }

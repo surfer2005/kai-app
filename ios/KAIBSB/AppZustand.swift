@@ -88,6 +88,20 @@ final class AppZustand: ObservableObject {
     @Published var startPfad: [Bereich] = []
     @Published var mehrPfad: [MehrZiel] = []
     @Published var offenesGeraet: OffenesGeraet?
+
+    /// Erneutes Tippen auf den aktiven Reiter: zum Anfang. Start → Kachel-Weg schließen, KAI-Start zeigen; ein KAI-Bereich →
+    /// seine Startansicht neu laden (schließt auch einen geöffneten Datensatz — der ändert die Adresse in KAI nicht); Mehr → zur Liste.
+    func reiterNochmalGetippt(_ r: Reiter) {
+        switch r {
+        case .start:
+            startPfad = []
+            anmeldung?.startansichtZeigen()
+        case .bereich(let b):
+            seite(b)?.zurStartansicht()
+        case .mehr:
+            mehrPfad = []
+        }
+    }
     /// Rechte der angemeldeten Person aus KAI (`/api/auth/me` → `permissions`), nil = nicht angemeldet bzw. unbekannt.
     /// Der letzte Stand wird je Umgebung gemerkt (ohne Netz bleiben die Reiter), entscheidet aber nur über die Reiter —
     /// was jemand sehen darf, prüft KAI in jeder Seite selbst.

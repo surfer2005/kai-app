@@ -44,6 +44,10 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
 - **Meine Dienste** (Testbetrieb, Peter 2026-11-24): eigene Kachel auf Start über „In der App“ mit dem nächsten Eintrag aus den
   Dienstplänen (KAI: `MeineDiensteView.vue`, `/api/meine-dienste`). Bereich `meine_dienste` in `Bereich.swift` mit `nurAufStart` —
   nie in der Leiste, nie unter „Mehr“; die Kachel öffnet ihn im Reiter „Start“, zurück führt zu Start.
+- **Bedienung wie auf dem iPhone üblich** (Peter 2026-11-27): über einer KAI-Seite stehen nur Name und Umgebung. **Neu laden** durch
+  Herunterziehen der Seite, **zum Anfang** des Bereichs durch nochmaliges Tippen auf den aktiven Reiter unten (schließt auch einen
+  geöffneten Datensatz), **zurück** über „← Zur Liste“ in KAI. Die früheren Knöpfe Zurück/Haus/Neu laden sind entfallen — Zurück ging
+  nie, weil KAI das Öffnen eines Datensatzes nicht in den Verlauf einträgt.
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen** (KAI: `BordbuchLesen.vue`): öffnet mit dem Tagesüberblick (heute,
