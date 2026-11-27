@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Die Reiter der unteren Leiste: links fest „Start“ (KAI-Start in App-Darstellung, ohne Anmeldung die Anmeldeseite), dann die
 /// Bereiche, die unten stehen (je Person, s. `Leiste`), rechts fest „Mehr“.
@@ -91,15 +92,73 @@ final class AppZustand: ObservableObject {
 
     /// Erneutes Tippen auf den aktiven Reiter: zum Anfang. Start → Kachel-Weg schließen, KAI-Start zeigen; ein KAI-Bereich →
     /// seine Startansicht neu laden (schließt auch einen geöffneten Datensatz — der ändert die Adresse in KAI nicht); Mehr → zur Liste.
+    /// Ist in der Seite etwas ungespeichert, fragt sie vorher (WebSteuerung.nachRueckfrage).
     func reiterNochmalGetippt(_ r: Reiter) {
         switch r {
         case .start:
-            startPfad = []
-            anmeldung?.startansichtZeigen()
+            if let start = anmeldung {
+                start.nachRueckfrage { [weak self] in self?.startPfad = []; start.startansichtZeigen() }
+            } else { startPfad = [] }
         case .bereich(let b):
-            seite(b)?.zurStartansicht()
+            if let s = seite(b) { s.nachRueckfrage { s.zurStartansicht() } }
         case .mehr:
             mehrPfad = []
+        }
+    }
+
+    // MARK: - Zahlen an den Reitern (Peter 2026-11-27)
+
+    /// Ungelesene Dienstanweisungen (wie „n neu“ auf Start, `GET /api/directives/ungelesen`).
+    @Published private(set) var zahlDienstanweisung = 0
+    /// Ungelesene Benachrichtigungen (Glocke, `GET /api/notifications?nurAnzahl=1`).
+    @Published private(set) var zahlBenachrichtigungen = 0
+    private var zaehlerAufgabe: Task<Void, Never>?
+
+    /// Zahl am Reiter „Mehr“: Benachrichtigungen, dazu die Dienstanweisungen, wenn die unter „Mehr“ stehen.
+    var zahlMehr: Int {
+        zahlBenachrichtigungen + (rechte != nil && leiste.mehr.contains(.dienstanweisung) ? zahlDienstanweisung : 0)
+    }
+
+    /// Kurz verzögert neu lesen (mehrere Anstöße hintereinander zählen einmal).
+    func zaehlerPruefen() {
+        zaehlerAufgabe?.cancel()
+        zaehlerAufgabe = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.zaehlerLaden()
+        }
+    }
+
+    func zaehlerLaden() async {
+        guard rechte != nil, let api = await api(), api.token != nil else { zahlDienstanweisung = 0; zahlBenachrichtigungen = 0; return }
+        if darf(.dienstanweisung), let n = try? await api.zahl("directives/ungelesen", feld: "anzahl") { zahlDienstanweisung = n }
+        if let n = try? await api.zahl("notifications?nurAnzahl=1", feld: "unread") { zahlBenachrichtigungen = n }
+    }
+
+    // MARK: - Kurzbefehle am App-Symbol (lange drücken, Peter 2026-11-27)
+
+    /// Nur, was die Person darf: Neue Meldung (Schreibrecht), Dienstanweisung, Bordbuch, Informationen.
+    func kurzbefehleSetzen() {
+        var liste: [UIApplicationShortcutItem] = []
+        func eintrag(_ typ: String, _ titel: String, _ symbol: String) {
+            liste.append(UIApplicationShortcutItem(type: typ, localizedTitle: titel, localizedSubtitle: nil,
+                                                   icon: UIApplicationShortcutIcon(systemImageName: symbol)))
+        }
+        if let rechte {
+            if rechte["meldungen"] == "write" { eintrag(Kurzbefehl.neueMeldung, "Neue Meldung", "square.and.pencil") }
+            for b in [Bereich.dienstanweisung, .bordbuch, .informationen] where darf(b) { eintrag(Kurzbefehl.bereich + b.rawValue, b.name, b.symbol) }
+        }
+        UIApplication.shared.shortcutItems = Array(liste.prefix(4))
+    }
+
+    /// Ein Kurzbefehl wurde gewählt (KurzbefehlPost): Bereich öffnen, bei „Neue Meldung“ gleich das Formular (KAI: #meldungen?neu=1).
+    func kurzbefehl(_ typ: String) {
+        guard rechte != nil else { return }
+        if typ == Kurzbefehl.neueMeldung, darf(.meldungen) {
+            oeffne(.meldungen)
+            seite(.meldungen)?.zeigen("meldungen?neu=1")
+        } else if typ.hasPrefix(Kurzbefehl.bereich), let b = Bereich(rawValue: String(typ.dropFirst(Kurzbefehl.bereich.count))), darf(b) {
+            oeffne(b)
         }
     }
     /// Rechte der angemeldeten Person aus KAI (`/api/auth/me` → `permissions`), nil = nicht angemeldet bzw. unbekannt.
@@ -236,6 +295,7 @@ final class AppZustand: ObservableObject {
         for seite in Array(neueSeiten.values) + [start, info, mehr] {
             seite.geraetGeoeffnet = { [weak self] id, name in self?.offenesGeraet = OffenesGeraet(id: id, name: name) }
             seite.anmeldungGeaendert = { [weak self] in self?.rechtePruefen() }
+            seite.zaehlerGeaendert = { [weak self] in self?.zaehlerPruefen() }
         }
         // Start der App (AppStart.vue): Kachel → Reiter des Bereichs bzw. im Reiter „Start“ öffnen; Glocke → Mehr → Benachrichtigungen;
         // Kürzel → Mehr
@@ -313,6 +373,8 @@ final class AppZustand: ObservableObject {
     private func rechteSetzen(_ neu: [String: String]?) {
         guard let umgebung else { return }
         if rechte != neu { rechte = neu }
+        kurzbefehleSetzen()
+        zaehlerPruefen()
         let k = "kaiRechte." + umgebung.rawValue
         if let neu, let daten = try? JSONEncoder().encode(neu) { speicher.set(daten, forKey: k) } else { speicher.removeObject(forKey: k) }
         reiterPruefen()

@@ -46,8 +46,14 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   nie in der Leiste, nie unter „Mehr“; die Kachel öffnet ihn im Reiter „Start“, zurück führt zu Start.
 - **Bedienung wie auf dem iPhone üblich** (Peter 2026-11-27): über einer KAI-Seite stehen nur Name und Umgebung. **Neu laden** durch
   Herunterziehen der Seite, **zum Anfang** des Bereichs durch nochmaliges Tippen auf den aktiven Reiter unten (schließt auch einen
-  geöffneten Datensatz), **zurück** über „← Zur Liste“ in KAI. Die früheren Knöpfe Zurück/Haus/Neu laden sind entfallen — Zurück ging
-  nie, weil KAI das Öffnen eines Datensatzes nicht in den Verlauf einträgt.
+  geöffneten Datensatz), **zurück** durch Wischen vom linken Rand bzw. „← Zur Liste“ in KAI. Die früheren Knöpfe Zurück/Haus/Neu laden
+  sind entfallen — Zurück ging nie, weil KAI das Öffnen eines Datensatzes nicht in den Verlauf eintrug; jetzt tut es das in der App
+  (KAI: `client/src/app-zurueck.js`). Vor dem Neuladen fragt die App, wenn in der Seite etwas ungespeichert ist (KAI: `window.kaiHatUngespeichert`).
+- **Zahlen an den Reitern:** ungelesene Dienstanweisungen am Reiter „Dienstanweisung“ (`/api/directives/ungelesen`), ungelesene
+  Benachrichtigungen an „Mehr“ (`/api/notifications?nurAnzahl=1`); neu gelesen bei Rückkehr in die App, Reiterwechsel, alle 2 Min. und
+  nach jeder Speicherung in KAI (Nachricht `{art: 'zaehler'}`).
+- **Kurzbefehle am App-Symbol** (lange drücken, nach Rechten): Neue Meldung (öffnet `#meldungen?neu=1` → Formular), Dienstanweisung, Bordbuch,
+  Informationen. Offen: Push-Mitteilungen und Widget — brauchen das bezahlte Apple-Entwicklerprogramm.
 - In der App blendet KAI seine eigene Kopfleiste (Glocke, Konto, Uhr, Hafen …) und die Seitenleiste aus und zeigt in Listen nur
   das Suchfeld — es erkennt die App am User-Agent „KAI-BSB-App/…“ (KAI: `client/src/app-modus.js`).
 - **Bordbuch** (Recht `bordbuch`, Lesen genügt) — **nur lesen** (KAI: `BordbuchLesen.vue`): öffnet mit dem Tagesüberblick (heute,

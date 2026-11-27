@@ -1,8 +1,44 @@
 import SwiftUI
+import UIKit
 import AVFoundation
+import Combine
+
+/// Kurzbefehle am App-Symbol (lange drücken, Peter 2026-11-27): Typen und der Weg vom System in die App.
+enum Kurzbefehl {
+    static let neueMeldung = "de.kaibsb.meldung.neu"
+    static let bereich = "de.kaibsb.bereich."
+}
+
+/// Briefkasten für einen gewählten Kurzbefehl — das System meldet ihn an den App- bzw. Szenen-Delegaten, die App liest ihn hier.
+@MainActor
+final class KurzbefehlPost: ObservableObject {
+    static let shared = KurzbefehlPost()
+    @Published var offen: String?
+}
+
+/// Kurzbefehle kommen über die Szene: beim Kaltstart in den Verbindungsoptionen, sonst über `performActionFor`.
+final class AppDelegat: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, configurationForConnecting sitzung: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        if let k = options.shortcutItem { let typ = k.type; Task { @MainActor in KurzbefehlPost.shared.offen = typ } }
+        let c = UISceneConfiguration(name: nil, sessionRole: sitzung.role)
+        c.delegateClass = SzenenDelegat.self
+        return c
+    }
+}
+
+final class SzenenDelegat: NSObject, UIWindowSceneDelegate {
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        let typ = shortcutItem.type
+        Task { @MainActor in KurzbefehlPost.shared.offen = typ }
+        completionHandler(true)
+    }
+}
 
 @main
 struct KAIBSBApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegat.self) private var delegat
     @StateObject private var app = AppZustand()
 
     init() {
@@ -30,6 +66,7 @@ struct KAIBSBApp: App {
 struct HauptAnsicht: View {
     @EnvironmentObject private var app: AppZustand
     @Environment(\.scenePhase) private var phase
+    @ObservedObject private var kurzbefehle = KurzbefehlPost.shared
 
     var body: some View {
         // Nochmal auf den aktiven Reiter tippen = zum Anfang des Bereichs (wie auf dem iPhone üblich, Peter 2026-11-27; ersetzt den
@@ -45,13 +82,34 @@ struct HauptAnsicht: View {
                 BereichReiter(bereich: b)
                     .tabItem { Label(b.leistenName, systemImage: b.symbol) }
                     .tag(Reiter.bereich(b))
+                    // Zahl am Reiter (Peter 2026-11-27): ungelesene Dienstanweisungen; 0 = keine Zahl
+                    .badge(b == .dienstanweisung ? app.zahlDienstanweisung : 0)
             }
             MehrReiter()
                 .tabItem { Label("Mehr", systemImage: "ellipsis.circle") }
                 .tag(Reiter.mehr)
+                .badge(app.zahlMehr)
         }
-        // Zurück in die App: Rechte neu lesen (in KAI geändert, inzwischen abgemeldet …)
-        .onChange(of: phase) { _, neu in if neu == .active { app.rechtePruefen() } }
+        // Zurück in die App: Rechte und Zahlen neu lesen (in KAI geändert, inzwischen abgemeldet …)
+        .onChange(of: phase) { _, neu in if neu == .active { app.rechtePruefen(); app.zaehlerPruefen() } }
+        // Reiterwechsel: Zahlen auffrischen (z. B. nach dem Lesen einer Dienstanweisung)
+        .onChange(of: app.reiter) { _, _ in app.zaehlerPruefen() }
+        // und alle zwei Minuten, solange die App offen ist
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 120_000_000_000)
+                if phase == .active { await app.zaehlerLaden() }
+            }
+        }
+        // Kurzbefehl am App-Symbol: wenn die Rechte da sind, ausführen
+        .onChange(of: kurzbefehle.offen, initial: true) { _, typ in kurzbefehlAusfuehren(typ) }
+        .onChange(of: app.rechte) { _, _ in kurzbefehlAusfuehren(kurzbefehle.offen) }
+    }
+
+    private func kurzbefehlAusfuehren(_ typ: String?) {
+        guard let typ, app.rechte != nil else { return }
+        kurzbefehle.offen = nil
+        app.kurzbefehl(typ)
     }
 }
 

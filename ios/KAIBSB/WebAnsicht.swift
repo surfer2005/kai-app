@@ -107,6 +107,15 @@ struct KaiSeite: View {
         }
         .background(Farbe.hintergrund)
         .onAppear { steuerung.erstmalsLaden() }
+        // Vor dem Neuladen (Herunterziehen, Reiter nochmal tippen): gleicher Wortlaut wie in KAI (ungespeichert.js)
+        .alert("Ungespeicherte Änderungen", isPresented: Binding(get: { steuerung.rueckfrage != nil },
+                                                                 set: { if !$0 { steuerung.rueckfrage = nil } }),
+               presenting: steuerung.rueckfrage) { r in
+            Button("Verwerfen", role: .destructive) { steuerung.rueckfrage = nil; r.weiter() }
+            Button("Weiter bearbeiten", role: .cancel) { steuerung.rueckfrage = nil; r.abbruch?() }
+        } message: { _ in
+            Text("Es gibt ungespeicherte Änderungen. Verwerfen und neu laden?")
+        }
     }
 }
 

@@ -2,6 +2,13 @@ import SwiftUI
 import UIKit
 import WebKit
 
+/// Rückfrage vor dem Neuladen einer KAI-Seite, in der noch etwas ungespeichert ist.
+struct Rueckfrage: Identifiable {
+    let id = UUID()
+    let weiter: () -> Void
+    var abbruch: (() -> Void)?
+}
+
 /// Stand der Anmeldung in einer KAI-Seite.
 enum AnmeldeStand: Equatable {
     /// Seite noch nicht (fertig) geladen — keine Aussage möglich.
@@ -29,6 +36,10 @@ final class WebSteuerung: NSObject, ObservableObject {
     /// Meldet, wenn sich die Anmeldung geändert haben kann (Seite geladen, KAI hat das Token geschrieben oder entfernt) —
     /// die App liest dann die Rechte neu und stellt die Reiter danach.
     var anmeldungGeaendert: (() -> Void)?
+    /// KAI hat etwas gespeichert (Dienstanweisung gelesen, Benachrichtigung gelesen …) → Zahlen an den Reitern neu lesen.
+    var zaehlerGeaendert: (() -> Void)?
+    /// Rückfrage „Ungespeicherte Änderungen verwerfen?“ vor dem Neuladen (KaiSeite zeigt sie an).
+    @Published var rueckfrage: Rueckfrage?
     /// Start der App (KAI AppStart.vue, `anAppMelden`): ein Bereich wurde angetippt bzw. Glocke/Kürzel („mehr“, Ziel).
     var bereichGewaehlt: ((Bereich) -> Void)?
     var mehrGewaehlt: ((String) -> Void)?
@@ -114,9 +125,26 @@ final class WebSteuerung: NSObject, ObservableObject {
     func zurueck() { if webView.canGoBack { webView.goBack() } }
 
     @objc private func herunterGezogen() {
-        neuLaden()
-        // Rückfall: kommt keine Meldung „fertig“/„fehlgeschlagen“ (z. B. ohne Netz), den Kreisel nach 10 s trotzdem einziehen
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.auffrischenBeenden() }
+        nachRueckfrage({ [weak self] in
+            self?.neuLaden()
+            // Rückfall: kommt keine Meldung „fertig“/„fehlgeschlagen“ (z. B. ohne Netz), den Kreisel nach 10 s trotzdem einziehen
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.auffrischenBeenden() }
+        }, abbruch: { [weak self] in self?.auffrischenBeenden() })
+    }
+
+    /// Ist in der KAI-Seite etwas eingetragen und nicht gespeichert? (KAI: `window.kaiHatUngespeichert`, ungespeichert.js)
+    func hatUngespeichert() async -> Bool {
+        guard einmalFertig, umgebung.enthaelt(webView.url) else { return false }
+        let r = try? await webView.evaluateJavaScript("typeof window.kaiHatUngespeichert === 'function' && window.kaiHatUngespeichert() === true")
+        return (r as? Bool) == true || (r as? NSNumber)?.boolValue == true
+    }
+
+    /// Neu laden bzw. zum Anfang — vorher fragen, wenn sonst Eingaben verloren gingen (Peter 2026-11-27).
+    func nachRueckfrage(_ aktion: @escaping () -> Void, abbruch: (() -> Void)? = nil) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if await self.hatUngespeichert() { self.rueckfrage = Rueckfrage(weiter: aktion, abbruch: abbruch) } else { aktion() }
+        }
     }
 
     private func auffrischenBeenden() {
@@ -190,6 +218,7 @@ final class WebSteuerung: NSObject, ObservableObject {
         guard let d = inhalt as? [String: Any] else { return }
         switch (d["art"] as? String) ?? "" {
         case "anmeldung": anmeldungGeaendert?(); return
+        case "zaehler": zaehlerGeaendert?(); return
         case "bereich":
             if let id = d["id"] as? String, let b = Bereich(rawValue: id) { bereichGewaehlt?(b) }
             return

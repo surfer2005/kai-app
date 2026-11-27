@@ -56,6 +56,13 @@ struct KaiApi {
         return try await holen("asset-manager/assets?q=\(q)&limit=20", als: ListenAntwort.self).items
     }
 
+    /// Eine Zahl aus KAI, z. B. `directives/ungelesen` → `anzahl`, `notifications?nurAnzahl=1` → `unread` (Zahlen an den Reitern).
+    func zahl(_ pfad: String, feld: String) async throws -> Int {
+        let daten = try await rohHolen(pfad)
+        let obj = try JSONSerialization.jsonObject(with: daten) as? [String: Any]
+        return (obj?[feld] as? Int) ?? (obj?[feld] as? NSNumber)?.intValue ?? 0
+    }
+
     /// `GET /api/auth/me` → effektive Rechte je Ansicht (`permissions`: Ansicht → none | read | write), wie im Browser
     /// (`client/src/auth.js`, canRead). Danach richtet die App ihre Reiter aus.
     func rechte() async throws -> [String: String] {
