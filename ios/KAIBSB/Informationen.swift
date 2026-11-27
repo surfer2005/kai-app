@@ -64,9 +64,11 @@ struct InformationenListe: View {
 
 /// Eine Kachel wie in KAI (`client/src/styles/zustandskachel.css`, `.zk.zk-kai`): Fläche, 1 px Rand, Radius 10, grüner Streifen
 /// links 5 px; Symbol oben links (grün), darunter der Name.
-/// Alle Kacheln gleich groß (Peter 2026-11-27): der Name hält immer zwei Zeilen frei — vorher war eine Kachel mit einzeiligem Namen
-/// („Wetter“) niedriger als eine mit zweizeiligem („GPS-Karte · Schiffe“). Braucht ein Name bei großer Schrift mehr, wird er kleiner
-/// statt die Kachel höher.
+/// Alle Kacheln gleich groß (Peter 2026-11-27, zweimal: „die Kacheln … gleich groß … wenn der Text halt größer ist, müssen wir uns
+/// irgendwas einfallen lassen“): die Fläche für den Namen ist IMMER genau zwei Zeilen hoch (unsichtbarer Platzhalter in der aktuellen
+/// Schriftgröße), der Name steht darin. Ein Name aus EINEM Wort („Schiffseinsatzplan“, „Cateringübersicht“) bleibt in einer Zeile und
+/// wird bei Bedarf kleiner — vorher trennte iOS ihn mitten im Wort („Schiffseinsatz-plan“) und die Kachel wurde höher. Nur Namen mit
+/// Leerzeichen („GPS-Karte · Schiffe“) dürfen zwei Zeilen nutzen.
 struct Kachel: View {
     let symbol: String
     let name: String
@@ -80,12 +82,21 @@ struct Kachel: View {
                 .foregroundStyle(Farbe.primaer)
                 .frame(width: symbolHoehe, height: symbolHoehe, alignment: .leading)
                 .accessibilityHidden(true)
-            Text(name)
+            Text("A\nA")
                 .font(.body.weight(.bold))
-                .foregroundStyle(Farbe.text)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2, reservesSpace: true)
-                .minimumScaleFactor(0.75)
+                .hidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .topLeading) {
+                    Text(name)
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(Farbe.text)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(name.contains(" ") ? 2 : 1)
+                        .minimumScaleFactor(0.5)
+                        .allowsTightening(true)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(name)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.vertical, 9)
