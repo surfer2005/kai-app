@@ -25,7 +25,7 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   aus KAI, Etikett drucken, Einstellungen). Ohne Anmeldung gibt es nur „Start“ (mit der KAI-Anmeldeseite) und „Mehr“.
 - **Start** zeigt die KAI-Startseite in App-Darstellung (KAI: `AppStart.vue`): Begrüßung, Glocke und Kürzel, ein Hinweis, wenn
   etwas ansteht, und die eigenen Bereiche als Kacheln (zwei nebeneinander, Zahl oben rechts: Dienstanweisung „neu“, Asset Manager
-  „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Kacheln Zielanzeiger … Portale (zwei nebeneinander
+  „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Kacheln Zielanzeiger … Portale (alle gleich groß, zwei nebeneinander
   wie auf Start, unter Start und unter „Mehr“ gleich; die frühere Liste steht bei cbd2e0f2). Kein Schiff, keine
   Schildchen (Peter 2026-11-24). Steht der Bereich unten in der Leiste, wechselt die Kachel auf dessen Reiter; sonst öffnet sie ihn
   im Reiter „Start“ selbst — der Zurück-Pfeil oben links führt dann zu „Start“, nicht zu „Mehr“ (Peter 2026-11-24). Was über „Mehr“

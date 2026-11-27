@@ -64,6 +64,9 @@ struct InformationenListe: View {
 
 /// Eine Kachel wie in KAI (`client/src/styles/zustandskachel.css`, `.zk.zk-kai`): Fläche, 1 px Rand, Radius 10, grüner Streifen
 /// links 5 px; Symbol oben links (grün), darunter der Name.
+/// Alle Kacheln gleich groß (Peter 2026-11-27): der Name hält immer zwei Zeilen frei — vorher war eine Kachel mit einzeiligem Namen
+/// („Wetter“) niedriger als eine mit zweizeiligem („GPS-Karte · Schiffe“). Braucht ein Name bei großer Schrift mehr, wird er kleiner
+/// statt die Kachel höher.
 struct Kachel: View {
     let symbol: String
     let name: String
@@ -78,9 +81,10 @@ struct Kachel: View {
                 .font(.body.weight(.bold))
                 .foregroundStyle(Farbe.text)
                 .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2, reservesSpace: true)
+                .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.vertical, 9)
         .padding(.leading, 5 + 11)
         .padding(.trailing, 11)
