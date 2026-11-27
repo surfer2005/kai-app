@@ -70,12 +70,15 @@ struct InformationenListe: View {
 struct Kachel: View {
     let symbol: String
     let name: String
+    /// Feste Höhe für das Symbol: die SF-Symbole sind verschieden hoch (Besteck höher als Wolke), sonst wäre jede Zeile anders hoch.
+    @ScaledMetric(relativeTo: .title2) private var symbolHoehe: CGFloat = 30
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Image(systemName: symbol)
                 .font(.title2)
                 .foregroundStyle(Farbe.primaer)
+                .frame(width: symbolHoehe, height: symbolHoehe, alignment: .leading)
                 .accessibilityHidden(true)
             Text(name)
                 .font(.body.weight(.bold))
