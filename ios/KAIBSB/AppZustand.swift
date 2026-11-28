@@ -58,16 +58,14 @@ struct Weg: Equatable {
     var startPfad: [Bereich] = []
     var mehrPfad: [MehrZiel] = []
 
-    /// Kachel auf Start (Peter 2026-11-24): steht der Bereich unten in der Leiste, wechselt sie auf dessen Reiter; sonst öffnet
-    /// sie ihn in der Navigation des Reiters „Start“ — der Zurück-Pfeil führt dann zu „Start“, nicht zu „Mehr“. „Mehr“ bleibt unberührt.
-    func kachel(_ b: Bereich, unten: [Bereich]) -> Weg {
+    /// Kachel auf Start (Peter 2026-11-28, vorher 2026-11-24): JEDE Kachel öffnet ihren Bereich in der Navigation des Reiters
+    /// „Start“ — oben links „‹ Start“, Wischen vom linken Rand führt zu Start zurück. Das gilt auch für Bereiche, die zusätzlich
+    /// unten in der Leiste stehen (vorher wechselte die Kachel dort auf den Reiter, und es gab kein Zurück zu Start). Ein Tipp unten
+    /// auf den Reiter bleibt der Weg ohne Pfeil. „Mehr“ und die übrigen Reiter bleiben unberührt.
+    func kachel(_ b: Bereich) -> Weg {
         var neu = self
-        if unten.contains(b) {
-            neu.reiter = .bereich(b)
-        } else {
-            neu.reiter = .start
-            neu.startPfad = [b]
-        }
+        neu.reiter = .start
+        neu.startPfad = [b]
         return neu
     }
 }
@@ -244,9 +242,9 @@ final class AppZustand: ObservableObject {
         }
     }
 
-    /// Kachel auf Start: Bereich unten → dessen Reiter, sonst im Reiter „Start“ öffnen (s. `Weg.kachel`).
+    /// Kachel auf Start: immer im Reiter „Start“ öffnen, mit „‹ Start“ (s. `Weg.kachel`).
     func kachelGewaehlt(_ b: Bereich) {
-        let neu = Weg(reiter: reiter, startPfad: startPfad, mehrPfad: mehrPfad).kachel(b, unten: rechte == nil ? [] : leiste.unten)
+        let neu = Weg(reiter: reiter, startPfad: startPfad, mehrPfad: mehrPfad).kachel(b)
         if startPfad != neu.startPfad { startPfad = neu.startPfad }
         if reiter != neu.reiter { reiter = neu.reiter }
     }

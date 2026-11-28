@@ -36,8 +36,10 @@ foto 12-scannen-unter-mehr -umgebung test -rechte alle -reiter scan
 WARTE=15 foto 13-benachrichtigungen-kai-test -umgebung test -rechte alle -reiter benachrichtigungen
 # Bordbuch (nur lesen), in der Vorgabe der Leiste — ohne Anmeldung zeigt die KAI-Seite die Anmeldeseite
 WARTE=15 foto 18-bordbuch-kai-test -umgebung test -rechte alle -reiter bordbuch
-# Kachel auf Start, deren Bereich nicht unten steht (Peter 2026-11-24): öffnet im Reiter „Start“, zurück → „Start“ (nicht „Mehr“)
+# Kachel auf Start (Peter 2026-11-24/28): öffnet im Reiter „Start“, zurück → „Start“ (nicht „Mehr“)
 foto 19-informationen-ueber-start -umgebung test -rechte dienstanweisung,meldungen,bordbuch -reiter start-info
+# Kachel eines Bereichs, der AUCH unten in der Leiste steht (Peter 2026-11-28): öffnet ebenfalls im Reiter „Start“ mit „‹ Start“
+WARTE=15 foto 24-dienstanweisung-ueber-start-kai-test -umgebung test -rechte dienstanweisung,meldungen,bordbuch -reiter start-da
 # KI-Chat und Störmeldedienst über ihre Kachel auf Start (wie der Tipp: bereichGewaehlt → Reiter „Start“) — ohne Anmeldung zeigt KAI
 # dort die Anmeldeseite; leer darf das Fenster nicht sein (Peter 2026-11-24: „Lädt …“ bzw. nichts)
 WARTE=15 foto 21-ki-chat-ueber-start-kai-test -umgebung test -rechte alle -reiter start-ki

@@ -67,33 +67,33 @@ final class ReiterTests: XCTestCase {
         XCTAssertNil(StartZiel.aus("start-unbekannt"))
     }
 
-    /// Peter 2026-11-24: Informationen → Zielanzeiger → zurück → zurück führte zu „Mehr“ statt zu „Start“. Eine Kachel auf Start,
-    /// deren Bereich nicht unten steht, öffnet ihn in der Navigation des Reiters „Start“; „Mehr“ bleibt unberührt.
+    /// Peter 2026-11-24: Informationen → Zielanzeiger → zurück → zurück führte zu „Mehr“ statt zu „Start“. Eine Kachel auf Start
+    /// öffnet ihren Bereich in der Navigation des Reiters „Start“; „Mehr“ bleibt unberührt.
     func testKachelOhneReiterUntenBleibtImStart() {
-        let unten: [Bereich] = [.dienstanweisung, .meldungen, .bordbuch]
         let vorher = Weg(reiter: .start, startPfad: [], mehrPfad: [.bereich(.schiffstatus)])
         for b in [Bereich.informationen, .stoermeldedienst, .assetManager, .scannen, .schiffstatus, .kiChat] {
-            let weg = vorher.kachel(b, unten: unten)
+            let weg = vorher.kachel(b)
             XCTAssertEqual(weg.reiter, .start, "\(b)")
             XCTAssertEqual(weg.startPfad, [b], "\(b)")
             XCTAssertEqual(weg.mehrPfad, [.bereich(.schiffstatus)], "Mehr bleibt unberührt (\(b))")
         }
         // ein zweiter Tipp ersetzt den Weg, er stapelt nicht
-        XCTAssertEqual(vorher.kachel(.informationen, unten: unten).kachel(.kiChat, unten: unten).startPfad, [.kiChat])
+        XCTAssertEqual(vorher.kachel(.informationen).kachel(.kiChat).startPfad, [.kiChat])
     }
 
-    /// Steht der Bereich unten, wechselt die Kachel wie bisher auf seinen Reiter — beide Wege bleiben, wie sie sind.
-    func testKachelMitReiterUntenWechseltDorthin() {
+    /// Peter 2026-11-28: auch ein Bereich, der unten in der Leiste steht, öffnet über die Kachel im Reiter „Start“ — mit „‹ Start“ und
+    /// Wischen zurück. Vorher wechselte die Kachel auf den Reiter unten, und es gab keinen Weg zurück zu Start.
+    func testKachelMitReiterUntenBleibtImStart() {
         let unten: [Bereich] = [.dienstanweisung, .meldungen, .bordbuch]
         let vorher = Weg(reiter: .start, startPfad: [.informationen], mehrPfad: [.einstellungen])
         for b in unten {
-            let weg = vorher.kachel(b, unten: unten)
-            XCTAssertEqual(weg.reiter, .bereich(b))
-            XCTAssertEqual(weg.startPfad, [.informationen])
-            XCTAssertEqual(weg.mehrPfad, [.einstellungen])
+            let weg = vorher.kachel(b)
+            XCTAssertEqual(weg.reiter, .start, "\(b)")
+            XCTAssertEqual(weg.startPfad, [b], "\(b)")
+            XCTAssertEqual(weg.mehrPfad, [.einstellungen], "Mehr bleibt unberührt (\(b))")
         }
-        // ohne bekannte Rechte steht unten nichts: auch dann im Reiter „Start“, nie unter „Mehr“
-        XCTAssertEqual(Weg().kachel(.meldungen, unten: []), Weg(reiter: .start, startPfad: [.meldungen], mehrPfad: []))
+        // ohne bekannte Rechte ebenso im Reiter „Start“, nie unter „Mehr“
+        XCTAssertEqual(Weg().kachel(.meldungen), Weg(reiter: .start, startPfad: [.meldungen], mehrPfad: []))
     }
 
     /// Die Bereiche tragen die Namen, Rechte und Ansichten aus KAI (client/src/app-modus.js, APP_BEREICHE).
@@ -140,7 +140,7 @@ final class ReiterTests: XCTestCase {
         XCTAssertEqual(l.unten, [.meldungen])
         XCTAssertFalse(l.mehr.contains(.meineDienste))
         XCTAssertEqual(Leiste.berechnen(rechte: [:], wahl: nil).unten, [.informationen])
-        let weg = Weg(reiter: .start, startPfad: [], mehrPfad: []).kachel(.meineDienste, unten: [.dienstanweisung, .meldungen, .bordbuch])
+        let weg = Weg(reiter: .start, startPfad: [], mehrPfad: []).kachel(.meineDienste)
         XCTAssertEqual(weg, Weg(reiter: .start, startPfad: [.meineDienste], mehrPfad: []))
         XCTAssertEqual(StartZiel.aus("start-dienste"), .start([.meineDienste]))
     }

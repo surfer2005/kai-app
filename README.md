@@ -27,8 +27,10 @@ gespiegelt; dort baut GitHub die App auf einem Mac (gleicher Weg wie die Fahrgas
   etwas ansteht, und die eigenen Bereiche als Kacheln (zwei nebeneinander, Zahl oben rechts: Dienstanweisung „neu“, Asset Manager
   „offline“) — ein Tipp wechselt in den Bereich; „Informationen“ öffnet die Kacheln Zielanzeiger … Portale (alle gleich groß, zwei nebeneinander
   wie auf Start, unter Start und unter „Mehr“ gleich; die frühere Liste steht bei cbd2e0f2). Kein Schiff, keine
-  Schildchen (Peter 2026-11-24). Steht der Bereich unten in der Leiste, wechselt die Kachel auf dessen Reiter; sonst öffnet sie ihn
-  im Reiter „Start“ selbst — der Zurück-Pfeil oben links führt dann zu „Start“, nicht zu „Mehr“ (Peter 2026-11-24). Was über „Mehr“
+  Schildchen (Peter 2026-11-24). JEDE Kachel öffnet ihren Bereich im Reiter „Start“ selbst — oben links „‹ Start“, Wischen vom
+  linken Rand führt zu Start zurück; das gilt auch für Bereiche, die zusätzlich unten in der Leiste stehen (Peter 2026-11-28; vorher
+  wechselte die Kachel dort auf den Reiter, und es gab kein Zurück zu Start). Hat die Seite selbst Ebenen (Meldung geöffnet …), geht der
+  Pfeil erst diese zurück, dann zu Start. Ein Tipp unten auf den Reiter öffnet den Bereich als eigenen Reiter, ohne Pfeil. Was über „Mehr“
   geöffnet wird, führt wie bisher zu „Mehr“ zurück.
 - **Verbindungen zu KAI** (Peter 2026-11-24: Störmeldedienst blieb bei „Lädt …“, KI-Chat leer): jede angemeldete KAI-Seite hält
   für den Mitarbeiter-Chat einen Ereignisstrom offen (`/api/chat/stream`), KAI spricht nur HTTP/1.1, und alle Seiten der App teilen
