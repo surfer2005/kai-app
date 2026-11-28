@@ -25,6 +25,9 @@ enum AnmeldeStand: Equatable {
 @MainActor
 final class WebSteuerung: NSObject, ObservableObject {
     @Published private(set) var kannZurueck = false
+    /// Wie viele Ebenen es IN der KAI-Seite zurückgeht (KAI meldet `{art: 'ebenen', n}`, app-zurueck.js): offene Datensätze, Unterseiten,
+    /// Sprünge mit „Zurück zu …“. > 0 → Pfeil oben links und Wischen der Seite; 0 → nichts bzw. das iPhone-Zurück (Peter 2026-11-28).
+    @Published private(set) var ebenen = 0
     @Published private(set) var laedt = false
     @Published private(set) var fehler: String?
 
@@ -56,7 +59,9 @@ final class WebSteuerung: NSObject, ObservableObject {
         let konfiguration = Self.konfiguration()
         let inhalt = konfiguration.userContentController
         webView = WKWebView(frame: .zero, configuration: konfiguration)
-        webView.allowsBackForwardNavigationGestures = true
+        // Wischen der Seite nur, wenn es in der Seite zurückgeht (ebenen > 0) — sonst holte es am Anfang eines Reiters eine frühere
+        // Seite zurück bzw. kollidierte mit dem iPhone-Zurück eines geöffneten Bereichs (Peter 2026-11-28)
+        webView.allowsBackForwardNavigationGestures = false
         webView.isOpaque = false
         webView.backgroundColor = UIColor(Farbe.hintergrund)
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
@@ -123,6 +128,18 @@ final class WebSteuerung: NSObject, ObservableObject {
     }
 
     func zurueck() { if webView.canGoBack { webView.goBack() } }
+
+    /// Pfeil oben links: eine Ebene in der KAI-Seite zurück — dasselbe wie Wischen (KAI entscheidet, ggf. mit Rückfrage).
+    func zurueckInSeite() {
+        guard ebenen > 0 else { return }
+        if webView.canGoBack { webView.goBack() } else { ebenenSetzen(0) }
+    }
+
+    private func ebenenSetzen(_ n: Int) {
+        let neu = max(0, n)
+        if ebenen != neu { ebenen = neu }
+        webView.allowsBackForwardNavigationGestures = neu > 0
+    }
 
     @objc private func herunterGezogen() {
         nachRueckfrage({ [weak self] in
@@ -219,6 +236,10 @@ final class WebSteuerung: NSObject, ObservableObject {
         switch (d["art"] as? String) ?? "" {
         case "anmeldung": anmeldungGeaendert?(); return
         case "zaehler": zaehlerGeaendert?(); return
+        case "ebenen":
+            let n = (d["n"] as? Int) ?? (d["n"] as? NSNumber)?.intValue ?? 0
+            ebenenSetzen(n)
+            return
         case "bereich":
             if let id = d["id"] as? String, let b = Bereich(rawValue: id) { bereichGewaehlt?(b) }
             return
@@ -355,6 +376,7 @@ extension WebSteuerung: WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         fehler = nil
+        ebenenSetzen(0)   // neue Seite: KAI meldet ihre Ebenen nach dem Laden
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

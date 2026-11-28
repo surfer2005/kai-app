@@ -59,15 +59,19 @@ struct WebAnsicht: UIViewRepresentable {
     }
 }
 
-/// Schmale Kopfleiste über einer KAI-Seite: nur Name und Umgebung (Peter 2026-11-27: Zurück, Haus und Neu laden taten sichtbar
-/// nichts — wie auf dem iPhone üblich: neu laden durch Herunterziehen, zum Anfang durch nochmaliges Tippen auf den Reiter unten,
-/// zurück über „← Zur Liste“ in KAI). Zurück ging nie: KAI trägt das Öffnen eines Datensatzes nicht in den Verlauf ein.
+/// Schmale Kopfleiste über einer KAI-Seite: Name und Umgebung (Peter 2026-11-27: Haus und Neu laden entfallen — neu laden durch
+/// Herunterziehen, zum Anfang durch nochmaliges Tippen auf den Reiter unten). Der Pfeil links erscheint NUR, wenn es in der Seite
+/// zurückgeht (Peter 2026-11-28: wie auf dem iPhone üblich Pfeil + Wischen, beide tun dasselbe; am Anfang eines Reiters keiner).
 struct WebKopf: View {
     @ObservedObject var steuerung: WebSteuerung
     let titel: String
 
     var body: some View {
         HStack(spacing: 10) {
+            if steuerung.ebenen > 0 {
+                Button { steuerung.zurueckInSeite() } label: { Image(systemName: "chevron.backward").font(.body.weight(.semibold)) }
+                    .accessibilityLabel("Zurück")
+            }
             Text(titel).font(.headline).lineLimit(1)
             UmgebungsKennzeichen(umgebung: steuerung.umgebung)
             Spacer()
@@ -157,10 +161,35 @@ struct MehrKaiSeite: View {
             .onAppear { if let ansicht { steuerung.zeigen(ansicht) } }
             .navigationTitle(titel)
             .navigationBarTitleDisplayMode(.inline)
+            .seitenZurueck(steuerung)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if steuerung.laedt { ProgressView().controlSize(.small) }
                 }
             }
     }
+}
+
+/// Geöffneter Bereich (über „Mehr“, eine Kachel auf Start oder Informationen): solange es IN der KAI-Seite zurückgeht, führt der Pfeil
+/// oben links eine Ebene in der Seite zurück (und das Wischen der Seite ist an); am Anfang der Seite gilt wieder das iPhone-Zurück
+/// mit seinem Wischen. So gibt es immer genau einen Pfeil und ein Wischen, die dasselbe tun (Peter 2026-11-28).
+struct SeitenZurueck: ViewModifier {
+    @ObservedObject var steuerung: WebSteuerung
+
+    func body(content: Content) -> some View {
+        content
+            .navigationBarBackButtonHidden(steuerung.ebenen > 0)
+            .toolbar {
+                if steuerung.ebenen > 0 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { steuerung.zurueckInSeite() } label: { Image(systemName: "chevron.backward") }
+                            .accessibilityLabel("Zurück")
+                    }
+                }
+            }
+    }
+}
+
+extension View {
+    func seitenZurueck(_ steuerung: WebSteuerung) -> some View { modifier(SeitenZurueck(steuerung: steuerung)) }
 }

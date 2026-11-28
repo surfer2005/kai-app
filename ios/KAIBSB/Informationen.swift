@@ -124,7 +124,16 @@ struct InfoSeite: View {
         }
         .navigationTitle(punkt.name)
         .navigationBarTitleDisplayMode(.inline)
+        .modifier(InfoZurueck(seite: app.informationen))
         // neu laden durch Herunterziehen (WebSteuerung), kein eigener Knopf (Peter 2026-11-27)
         .background(Farbe.hintergrund)
+    }
+}
+
+/// Pfeil oben links bei Informationen-Punkten: geht es in der Seite zurück (z. B. geöffneter Dienstplan), dort; sonst zur Liste.
+private struct InfoZurueck: ViewModifier {
+    let seite: WebSteuerung?
+    @ViewBuilder func body(content: Content) -> some View {
+        if let seite { content.seitenZurueck(seite) } else { content }
     }
 }
